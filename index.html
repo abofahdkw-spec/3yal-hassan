@@ -527,10 +527,18 @@ const AUD={
     if(this.b||!this.q.length)return
     this.b=1;const i=this.q.shift(),u=new SpeechSynthesisUtterance(i.t)
     u.lang='ar-SA';u.rate=.92;u.pitch=.98;u.volume=1;if(this.v)u.voice=this.v
-    u.onstart=()=>{T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active')}
-    u.onend=()=>{if(i._done)return;i._done=1;this.b=0;T.sp=0;if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
-    u.onerror=()=>{if(i._done)return;i._done=1;this.b=0;T.sp=0;if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
-    try{this.syn.speak(u)}catch(e){this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
+    // Android fix: clear stuck state before speaking
+    try{if(this.syn.speaking)this.syn.cancel()}catch(e){}
+    let wd=setTimeout(()=>{
+      // onstart didn't fire — utterance stuck (Android bug), cancel & retry
+      try{this.syn.cancel()}catch(e){}
+      this.b=0;this.q.unshift(i)
+      setTimeout(()=>this._nx(),200)
+    },3000)
+    u.onstart=()=>{clearTimeout(wd);T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active')}
+    u.onend=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
+    u.onerror=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
+    try{this.syn.speak(u)}catch(e){clearTimeout(wd);this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
   },
   _autoListen(){
     if(T.li||T.sp||T.silencePrompt)return

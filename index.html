@@ -54,7 +54,9 @@
         .main-stage {
             flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;
         }
-        #glCanvas { position: absolute; width: 280px; height: 280px; pointer-events: none; filter: drop-shadow(0 0 30px rgba(100,160,255,0.1)); }
+        #glCanvas { position: absolute; width: 280px; height: 280px; pointer-events: none; filter: drop-shadow(0 0 30px rgba(100,160,255,0.1)); border-radius: 50%; }
+        #glCanvas.fallback { background: radial-gradient(circle at 30% 30%, rgba(100,160,255,0.15), rgba(100,160,255,0.03) 60%, transparent); animation: orbPulse 3s ease-in-out infinite alternate; }
+        @keyframes orbPulse { 0% { transform: scale(0.95); opacity: 0.4; } 100% { transform: scale(1.05); opacity: 0.7; } }
         .speech-container { z-index: 20; max-width: 85%; text-align: center; position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); width: 100%; padding: 0 28px; }
         .word { display: inline-block; opacity: 0; transform: translateY(4px); transition: 0.4s cubic-bezier(0.22,1,0.36,1); margin: 0 2px; font-size: 18px; font-weight: 450; line-height: 1.6; color: #fff; }
         .word.visible { opacity: 1; transform: translateY(0); }
@@ -316,11 +318,12 @@ const ORB={
   // 🔥 AnalyserNode للميكروفون
   micStream:null,analyser:null,freqData:null,
   init(cvs){
+    if(!cvs)return;this.cvs=cvs
     try{
       this.gl=cvs.getContext('webgl',{alpha:1,antialias:1})||cvs.getContext('experimental-webgl')
-      if(!this.gl)return;this._res(cvs);this._gen(2.3,52,38);this._sh();this._buf()
+      if(!this.gl){this.cvs.classList.add('fallback');return}this._res(cvs);this._gen(2.3,52,38);this._sh();this._buf()
       window.addEventListener('resize',()=>this._res(cvs));this._loop()
-    }catch(e){console.warn('ORB init failed:',e);this.run=0}
+    }catch(e){console.warn('ORB init failed:',e);if(this.cvs)this.cvs.classList.add('fallback');this.run=0}
   },
   _res(c){if(!c)return;const dpr=window.devicePixelRatio||1,sz=280;c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+'px';c.style.height=sz+'px';if(this.gl)this.gl.viewport(0,0,sz*dpr,sz*dpr)},
   _gen(r,ws,hs){this.vtx=[];this.idx=[];this.nrm=[];
@@ -840,7 +843,7 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(T.sp)AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB()}})
+    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(!SR.ok&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}if(T.sp)AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB()}})
     el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
     el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
     el('menuBtn','click',openSB)

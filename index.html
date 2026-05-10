@@ -572,7 +572,8 @@ const SR={
   r:null,ok:0,timer:null,silenceTimer:null,silenceDelay:8000,
   init(){
     const C=window.SpeechRecognition||window.webkitSpeechRecognition
-    if(!C)return;this.ok=1;this.r=new C();this.r.lang='ar-SA';this.r.continuous=1;this.r.interimResults=1;this.r.maxAlternatives=3
+    if(!C){const w=$('micWrap');if(w)w.classList.add('typing');return}
+    this.ok=1;this.r=new C();this.r.lang='ar-SA';this.r.continuous=1;this.r.interimResults=1;this.r.maxAlternatives=3
     this.r.onresult=e=>{clearTimeout(this.timer);clearTimeout(this.silenceTimer);let f='',n='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)f+=t;else n+=t}const d=f||n;if(d.trim())$('studentSpeech').textContent=d;this.timer=setTimeout(()=>{if(f.trim())this._proc(NORM(f.trim()))},400);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}
     this.r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;this.stop();MB()}
     this.r.onend=()=>{if(T.li&&!T._srStop){try{this.r.start()}catch(e){}}else{MB();T._srStop=0}}

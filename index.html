@@ -504,12 +504,14 @@ const AMB={osc:null,gain:null,on:0,
 
 // ═══ الصوت ═══
 const AUD={
-  syn:window.speechSynthesis,v:null,q:[],b:0,gen:'male',
+  syn:window.speechSynthesis,v:null,q:[],b:0,gen:'male',ok:1,
   init(){
-    if(!this.syn)return
+    if(!this.syn){this.ok=0;const s=$('statusBar');if(s)s.textContent='⚠️ المتصفح لا يدعم الصوت';return}
     const p=()=>{const v=this.syn.getVoices();if(v.length)this._pk();else setTimeout(p,150)}
     if(this.syn.getVoices().length)this._pk()
     else{this.syn.addEventListener('voiceschanged',()=>this._pk(),{once:1});setTimeout(p,200)}
+    // Warm up speech engine (helps Android Chrome)
+    try{const w=new SpeechSynthesisUtterance(' ');w.volume=0;this.syn.speak(w);this.syn.cancel()}catch(e){}
   },
   _pk(){
     if(!this.syn)return;const v=this.syn.getVoices();if(!v.length)return
@@ -518,7 +520,8 @@ const AUD={
     this.v=b||v.find(x=>x.lang.startsWith('ar'))||v[0]
   },
   spk(t,cb){
-    if(!this.syn||!t){if(cb)cb();return}
+    if(!t){if(cb)cb();return}
+    if(!this.syn||!this.ok){const s=$('studentSpeech');if(s)s.textContent='💬 '+t;if(cb)cb();return}
     try{this.syn.cancel()}catch(e){}
     this.b=0
     const p=t.match(/[^.!?]+[.!?]+/g)||[t]
@@ -552,7 +555,7 @@ const AUD={
   _act:null,
   sfx(tp){
     try{
-      if(!this._act)this._act=new(window.AudioContext||window.webkitAudioContext)()
+      if(!this._act){this._act=new(window.AudioContext||window.webkitAudioContext)();if(this._act.state==='suspended')this._act.resume()}
       const ctx=this._act,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination)
       if(tp==='win'){
         for(let i=0;i<6;i++){const n=ctx.createOscillator(),ng=ctx.createGain();n.type='sawtooth';n.frequency.value=800+Math.random()*400;ng.gain.setValueAtTime(.04,ctx.currentTime+i*.08);ng.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.08+.06);n.connect(ng);ng.connect(ctx.destination);n.start(ctx.currentTime+i*.08);n.stop(ctx.currentTime+i*.08+.06)}
@@ -857,7 +860,7 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(!SR.ok&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
+    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
     el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
     el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');const s=$('studentSpeech');if(s)s.textContent='🗣️ '+t;if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
     el('menuBtn','click',openSB)

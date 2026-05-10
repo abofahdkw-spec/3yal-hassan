@@ -68,9 +68,9 @@
             position: absolute; bottom: max(12px,env(safe-area-inset-bottom,0)); width: 100%; display: flex; justify-content: center; z-index: 50; padding: 0 16px;
         }
         .mic-wrap {
-            display: flex; align-items: center; gap: 10px;
+            display: flex; align-items: center; gap: 14px;
             background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08);
-            border-radius: 40px; padding: 5px 7px 5px 18px;
+            border-radius: 48px; padding: 6px 6px 6px 22px;
             backdrop-filter: blur(60px); -webkit-backdrop-filter: blur(60px); width: 100%; max-width: 480px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
         }
@@ -99,9 +99,12 @@
         .streak-bar .s-num { font-size: 20px; font-weight: 700; color: #f97316; }
         .streak-bar .s-lbl { font-size: 9px; color: rgba(255,255,255,0.3); }
         .mic-btn {
-            width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.06); transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); flex-shrink: 0; position: relative;
+            width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.06); transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            flex-shrink: 0; position: relative;
         }
+        #micIcon { font-size: 26px; line-height: 1; }
         .mic-btn:active { transform: scale(0.85); }
         .mic-btn.active { background: rgba(239,68,68,0.18); }
         .mic-btn .ripple { position: absolute; inset: -3px; border-radius: 50%; border: 1px solid rgba(239,68,68,0.15); opacity: 0; }
@@ -169,7 +172,7 @@
     <button class="reset-btn" onclick="try{localStorage.clear()}catch(e){};location.reload()">تصفير النظام</button>
 </aside>
 
-<div id="menuBtn" style="position:fixed;left:20px;bottom:20px;z-index:60;cursor:pointer;opacity:0.3;font-size:20px;transition:0.3s">⚙️</div>
+<div id="menuBtn" style="position:fixed;top:max(20px,env(safe-area-inset-top,0));right:20px;z-index:60;cursor:pointer;opacity:0.3;font-size:20px;transition:0.3s">⚙️</div>
 <div id="mapBtn" style="position:fixed;left:70px;bottom:20px;z-index:60;cursor:pointer;opacity:0.3;font-size:18px;transition:0.3s;display:none">🗺️</div>
 <div id="pronBtn" style="position:fixed;left:105px;bottom:20px;z-index:60;cursor:pointer;opacity:0;font-size:16px;transition:0.3s;display:none" title="تدرب على النطق">🎤</div>
 
@@ -843,7 +846,7 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(!SR.ok&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}if(T.sp)AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB()}})
+    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(!SR.ok&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
     el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
     el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
     el('menuBtn','click',openSB)

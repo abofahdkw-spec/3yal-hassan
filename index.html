@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>عيال حسان — الإمبراطورية التعليمية</title>
+    <style>
+        :root {
+            --bg: #000;
+            --text: #fff;
+            --accent: #00a2ff;
+            --royal-black: #111;
+            --glass: rgba(255,255,255,0.03);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html {
+            background: var(--bg); color: var(--text);
+            height: 100dvh; width: 100%; overflow: hidden;
+            display: flex; flex-direction: column;
+            font-family: 'SF Pro Display', 'SF Arabic', 'Cairo', 'Noto Kufi Arabic', 'Traditional Arabic', -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* الشعار */
+        .app-header {
+            position: absolute; top: 40px; width: 100%; text-align: center; z-index: 100; pointer-events: none;
+        }
+        .logo {
+            font-size: 2.2rem; font-weight: 900; color: rgba(255,255,255,0.85);
+            letter-spacing: -1.5px;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.06));
+        }
+        /* الحالة */
+        #statusBar {
+            position: absolute; top: 80px; width: 100%; text-align: center; z-index: 90;
+            color: rgba(255,255,255,0.15); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+        }
+        #statusBar.active { color: rgba(255,255,255,0.4); }
+        /* خلفية متدرجة حية */
+        .bg-mesh {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: radial-gradient(ellipse at 20% 50%, rgba(0,162,255,0.04) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 50%, rgba(139,92,246,0.04) 0%, transparent 60%),
+                        radial-gradient(ellipse at 50% 0%, rgba(16,185,129,0.03) 0%, transparent 50%);
+            animation: meshDrift 12s ease-in-out infinite alternate;
+        }
+        @keyframes meshDrift {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.08) rotate(3deg); }
+        }
+        /* المسرح */
+        .main-stage {
+            flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;
+        }
+        #glCanvas { position: absolute; width: 280px; height: 280px; pointer-events: none; filter: drop-shadow(0 0 30px rgba(100,160,255,0.1)); }
+        .speech-container { z-index: 20; max-width: 85%; text-align: center; position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); width: 100%; padding: 0 28px; }
+        .word { display: inline-block; opacity: 0; transform: translateY(4px); transition: 0.4s cubic-bezier(0.22,1,0.36,1); margin: 0 2px; font-size: 18px; font-weight: 450; line-height: 1.6; color: #fff; }
+        .word.visible { opacity: 1; transform: translateY(0); }
+        #speechText { direction: rtl; min-height: 40px; }
+        #studentSpeech { color: rgba(255,255,255,0.2); font-size: 13px; direction: rtl; min-height: 20px; margin-top: 8px; }
+        #infoLine { color: rgba(255,255,255,0.1); font-size: 9px; margin-top: 6px; direction: rtl; }
+        /* الشريط السفلي */
+        .control-bar {
+            position: absolute; bottom: max(12px,env(safe-area-inset-bottom,0)); width: 100%; display: flex; justify-content: center; z-index: 50; padding: 0 16px;
+        }
+        .mic-wrap {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08);
+            border-radius: 40px; padding: 5px 7px 5px 18px;
+            backdrop-filter: blur(60px); -webkit-backdrop-filter: blur(60px); width: 100%; max-width: 480px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .mic-label { flex: 1; color: rgba(255,255,255,0.45); font-size: 11px; text-align: right; direction: rtl; cursor: pointer; letter-spacing: 0.5px; }
+        .mic-input { display: none; flex: 1; background: transparent; border: none; color: #fff; font-size: 14px; font-family: inherit; direction: rtl; outline: none; }
+        .mic-input::placeholder { color: rgba(255,255,255,0.16); }
+        .mic-wrap.typing .mic-label { display: none; }
+        .mic-wrap.typing .mic-input { display: block; }
+        .mic-wrap.typing .mic-btn { background: rgba(59,130,246,0.18); }
+        /* التقدم الدائري */
+        .cp-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; }
+        .cp-item { text-align: center; position: relative; }
+        .cp-ring { width: 64px; height: 64px; position: relative; }
+        .cp-ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+        .cp-ring .bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 6; }
+        .cp-ring .fg { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1); }
+        .cp-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 18px; }
+        .cp-lbl { font-size: 8px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+        .cp-pct { font-size: 7px; font-weight: 600; color: rgba(255,255,255,0.4); }
+        /* شارات */
+        .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 16px; }
+        .badge { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 500; background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .badge.earned { background: rgba(250,204,21,0.08); border-color: rgba(250,204,21,0.15); color: #facc15; }
+        .badge .b-icon { font-size: 12px; }
+        .streak-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 12px; margin-bottom: 16px; }
+        .streak-bar .s-num { font-size: 20px; font-weight: 700; color: #f97316; }
+        .streak-bar .s-lbl { font-size: 9px; color: rgba(255,255,255,0.3); }
+        .mic-btn {
+            width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.06); transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); flex-shrink: 0; position: relative;
+        }
+        .mic-btn:active { transform: scale(0.85); }
+        .mic-btn.active { background: rgba(239,68,68,0.18); }
+        .mic-btn .ripple { position: absolute; inset: -3px; border-radius: 50%; border: 1px solid rgba(239,68,68,0.15); opacity: 0; }
+        .mic-btn.active .ripple { opacity: 1; animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite; }
+        @keyframes ping { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        /* القائمة الجانبية */
+        .sidebar {
+            position: fixed; right: -300px; top: 0; height: 100%; width: 300px; max-width: 85vw;
+            background: rgba(12,14,12,0.98); border-left: 0.5px solid rgba(255,255,255,0.04);
+            z-index: 1000; padding: 20px; transition: 0.5s cubic-bezier(0.22,1,0.36,1); direction: rtl; overflow-y: auto;
+        }
+        .sidebar.open { right: 0; }
+        .sb-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; opacity: 0; pointer-events: none; transition: 0.4s; }
+        .sb-overlay.open { opacity: 1; pointer-events: auto; }
+        .sb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 0.5px solid rgba(255,255,255,0.04); }
+        .sb-header h2 { color: #fff; font-size: 16px; font-weight: 600; }
+        .sb-close { background: rgba(255,255,255,0.06); border: none; color: rgba(255,255,255,0.3); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+        .sb-name { color: rgba(255,255,255,0.5); font-size: 11px; margin-bottom: 16px; }
+        .sb-name strong { color: #fff; }
+        .sb-sub { margin-bottom: 14px; }
+        .sb-report { margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; }
+        .sb-report h3 { color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; }
+        .sb-rep-item { display: flex; justify-content: space-between; color: rgba(255,255,255,0.4); font-size: 10px; padding: 4px 0; border-bottom: 0.5px solid rgba(255,255,255,0.02); }
+        .sb-rep-item:last-child { border: none; }
+        .sb-rep-item .green { color: #4caf50; }
+        .sb-rep-item .red { color: #f44336; }
+        .sidebar::-webkit-scrollbar { width: 2px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+        .reset-btn { background: rgba(200,50,50,0.15); color: #f44; border: 0.5px solid rgba(200,50,50,0.2); border-radius: 10px; padding: 8px 12px; width: 100%; cursor: pointer; font-size: 10px; margin-top: 16px; font-family: inherit; }
+        @media (max-width:380px) { .word { font-size: 15px; } #glCanvas { width: 220px; height: 220px; } }
+        @media (min-height:800px) { .word { font-size: 20px; } #glCanvas { width: 320px; height: 320px; } }
+    </style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<header class="app-header"><div class="logo">عيال حسان</div></header>
+<div id="statusBar">بانتظارك</div>
+
+<main class="main-stage">
+    <canvas id="glCanvas"></canvas>
+    <div class="speech-container">
+        <div id="speechText"><span style="color:rgba(255,255,255,0.08);font-size:13px">اضغط 🎤 وتكلم مع أبو فهد</span></div>
+        <div id="studentSpeech"></div>
+        <div id="infoLine"></div>
+    </div>
+</main>
+
+<div class="control-bar">
+    <div class="mic-wrap" id="micWrap">
+        <span class="mic-label" id="micLabel"><span style="color:rgba(255,255,255,0.05);font-size:8px">⌘</span> الكتـابة</span>
+        <input class="mic-input" id="txtInput" type="text" placeholder="اكتب ردك هنا..." maxlength="100">
+        <button class="mic-btn" id="micBtn"><span class="ripple"></span><span id="micIcon">🎤</span></button>
+    </div>
+</div>
+
+<div class="sb-overlay" id="sbOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sb-header"><h2>لوحة ولي الأمر</h2><button class="sb-close" id="closeSb">✕</button></div>
+    <div class="sb-name">بطلنا: <strong id="childName">—</strong> &nbsp;|&nbsp; ⭐ <span id="starCount">0</span></div>
+    <div class="streak-bar"><span class="s-lbl">🔥 أيام متتالية</span><span><span class="s-num" id="streakNum">0</span> <span class="s-lbl">يوم</span></span></div>
+    <div class="cp-grid" id="cpGrid"></div>
+    <div class="badges" id="badgeArea"></div>
+    <div class="sb-report" id="sbReport"><h3>📊 تحليل الأداء</h3><div id="reportBody"><span style="color:rgba(255,255,255,0.15);font-size:10px">لا توجد بيانات بعد</span></div></div>
+    <button class="reset-btn" onclick="try{localStorage.clear()}catch(e){};location.reload()">تصفير النظام</button>
+</aside>
+
+<div id="menuBtn" style="position:fixed;left:20px;bottom:20px;z-index:60;cursor:pointer;opacity:0.3;font-size:20px;transition:0.3s">⚙️</div>
+<div id="mapBtn" style="position:fixed;left:70px;bottom:20px;z-index:60;cursor:pointer;opacity:0.3;font-size:18px;transition:0.3s;display:none">🗺️</div>
+<div id="pronBtn" style="position:fixed;left:105px;bottom:20px;z-index:60;cursor:pointer;opacity:0;font-size:16px;transition:0.3s;display:none" title="تدرب على النطق">🎤</div>
+
+<script>
+// ═══ SERVICE WORKER ═══
+(()=>{if('serviceWorker'in navigator){const c='self.addEventListener("install",e=>{e.waitUntil(self.skipWaiting())});self.addEventListener("activate",e=>{e.waitUntil(self.clients.claim())});self.addEventListener("fetch",e=>{e.respondWith((async()=>{try{const r=await caches.match(e.request);if(r)return r;const n=await fetch(e.request);if(n.ok){const c=await caches.open("h-v8");c.put(e.request,n.clone())}return n}catch{return new Response("",{status:503})}})())})';try{const b=new Blob([c],{type:'application/javascript'}),u=URL.createObjectURL(b);navigator.serviceWorker.register(u).catch(()=>{})}catch(e){}}})();
+
+// ═══ البيانات ═══
+const S = k=>{try{return localStorage.getItem('h8_'+k)}catch(e){return null}}, SS = (k,v)=>{try{localStorage.setItem('h8_'+k,v)}catch(e){console.warn('localStorage write failed:',k)}};
+const DG = (k,d)=>{try{const v=S(k);return v?JSON.parse(v):d}catch(e){return d}}, DS = (k,v)=>{try{SS(k,JSON.stringify(v))}catch(e){console.warn('DS failed',e)}};
+
+const DB = {
+  name: ()=>S('name')||null, setName: n=>SS('name',n),
+  stars: ()=>+S('stars')||0, addStar: ()=>{const s=DB.stars()+1;SS('stars',s);return s},
+  lastSub: ()=>S('lastSub')||'', setLastSub: s=>SS('lastSub',s),
+  quizzes: ()=>DG('quiz',[]), addQuiz: q=>{const a=DG('quiz',[]);a.push(q);if(a.length>1000)a.splice(0,a.length-1000);DS('quiz',a);return a},
+  report: sub=>{const q=DG('quiz',[]).filter(x=>x.sub===sub);if(!q.length)return{ok:0,total:0,pct:0};const ok=q.filter(x=>x.ok).length;return{ok,total:q.length,pct:Math.round(ok/q.length*100)}}
+};
+
+// ═══ اللهجة + الأمان ═══
+const DM={'ابي':'أبي','ابوي':'أبي','يمه':'أمي','شلونك':'كيف حالك','شلونج':'كيف حالك','شنو':'ماذا','ايش':'ماذا','وش':'ماذا','ليش':'لماذا','علشان':'لأن','عشان':'لأن','هاذ':'هذا','هاذي':'هذه','هذول':'هؤلاء','الحين':'الآن','دحين':'الآن','بس':'فقط','مره':'جدا','مو':'ليس','مافي':'لا يوجد','يوو':'نعم','ايوه':'نعم','اي':'نعم','ايه':'نعم','طيب':'حسنا','هلا':'مرحبا','يلا':'هيا','تع':'تعال','كيفك':'كيف حالك','شخبارك':'كيف حالك','عادي':'طبيعي','تسلم':'شكرا','يسلمو':'شكرا','شف':'انظر'}
+function NORM(t){let s=t;for(const[d,n]of Object.entries(DM))s=s.replace(new RegExp(d,'gi'),n);return s}
+const FW=['sex','سكس','porn','عراة','عريان','خمر','مخدرات','كحول','حشيش','ممنوع','سلاح','قتل','انتحار','عنف']
+const FP=[/\b(sex|porn|nude|adult|weapon|kill)\b/i]
+function SAFE(t){if(t==null)return false;const s=NORM(t).toLowerCase();const words=s.split(/[\s,.\!?\-_\n]+/).filter(Boolean);for(const w of FW)if(words.includes(w.toLowerCase()))return false;for(const p of FP)if(p.test(s))return false;return true}
+function ESC(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ═══ المنهج الكويتي الكامل ═══
+const SUBJECTS={
+  arabic:{name:'اللغة العربية',icon:'📖',color:'#006C35'},
+  english:{name:'English',icon:'🔤',color:'#3B82F6'},
+  math:{name:'الرياضيات',icon:'🔢',color:'#F59E0B'},
+  science:{name:'العلوم',icon:'🔬',color:'#10B981'},
+  islamic:{name:'التربية الإسلامية',icon:'🕌',color:'#8B5CF6'},
+  national:{name:'التربية الوطنية',icon:'🇰🇼',color:'#DD0033'}
+}
+const SUBJ_KEYS=['arabic','english','math','science','islamic','national']
+const DL={
+  // --- العربية: 34 درساً (الحروف + القواعد + الإملاء) ---
+  arabic:[
+    {id:'a01',t:'الحروف أ ب ت ث',n:['أول أربعة حروف في الأبجدية العربية: الألف، الباء، التاء، الثاء. الألف أول الحروف وهو حرف مد. الباء تحتها نقطة والتاء فوقها نقطتان والثاء فوقها ثلاث نقط.','الألف ترسم هكذا (ا) والباء (ب) والتاء (ت) والثاء (ث). هذه الحروف أساسية في القراءة والكتابة.'],f:['ألف: حرف مد','باء: نقطة تحت','تاء: نقطتان فوق','ثاء: ثلاث نقط فوق'],q:[{q:'كم نقطة تحت الباء؟',e:['واحدة','1','١'],c:'أحسنت! نقطة واحدة',w:'تحت الباء نقطة واحدة'},{q:'كم نقطة فوق الثاء؟',e:['ثلاث','3','٣','ثلاثة'],c:'ممتاز! ثلاث نقط',w:'فوق الثاء ثلاث نقط'}]},
+    {id:'a02',t:'الحروف ج ح خ',n:['الجيم نقطة تحت، والحاء لا نقط، والخاء نقطة فوق. الجيم (ج) والحاء (ح) والخاء (خ) حروف متصلة.','الجيم حرف مهم في كلمة "جمل" والحاء في "حلم" والخاء في "خروف".'],f:['جيم: نقطة تحت','حاء: لا نقط','خاء: نقطة فوق'],q:[{q:'أين نقطة الجيم؟',e:['تحت','تحت الحرف'],c:'أحسنت! تحت الجيم',w:'نقطة الجيم تحت الحرف'},{q:'هل للحاء نقط؟',e:['لا','ليس','مافي'],c:'ممتاز! لا نقط للحاء',w:'الحاء بلا نقط'}]},
+    {id:'a03',t:'الحروف د ذ ر ز',n:['الدال (د) والذال (ذ) والراء (ر) والزاي (ز). الدال بلا نقط، والذال نقطة فوق، والراء بلا نقط، والزاي نقطة فوق.','هذه الحروف لا تتصل بالحرف الذي بعدها، وتسمى الحروف المنفصلة.'],f:['دال: لا نقط','ذال: نقطة فوق','راء: لا نقط','زاي: نقطة فوق'],q:[{q:'هل تتصل الدال بالحرف الذي بعدها؟',e:['لا','ليس'],c:'أحسنت! الدال لا تتصل',w:'الدال من الحروف المنفصلة'},{q:'أين نقطة الذال؟',e:['فوق','فوق الحرف'],c:'ممتاز! فوق الذال',w:'نقطة الذال فوق الحرف'}]},
+    {id:'a04',t:'الحروف س ش ص ض',n:['السين (س) بلا نقط، والشين (ش) ثلاث نقط فوق، والصاد (ص) بلا نقط، والضاد (ض) نقطة فوق.','السين مهمة في كلمة "سماء" والشين في "شمس" والصاد في "صادق" والضاد لغة الضاد.'],f:['سين: لا نقط','شين: ثلاث نقط','صاد: لا نقط','ضاد: نقطة فوق'],q:[{q:'كم نقطة فوق الشين؟',e:['ثلاث','3','٣'],c:'أحسنت! ثلاث نقط',w:'فوق الشين ثلاث نقط'},{q:'لما تسمى العربية لغة الضاد؟',e:['لان بها الضاد','لان الضاد','عشان الضاد'],c:'ممتاز! لان بها حرف الضاد',w:'العربية لغة الضاد'}]},
+    {id:'a05',t:'الحروف ط ظ ع غ',n:['الطاء (ط) والظاء (ظ) والعين (ع) والغين (غ). الطاء بلا نقط، والظاء نقطة فوق، والعين بلا نقط، والغين نقطة فوق.','العين حرف حلقي يخرج من الحلق. الطاء تسمى الحرف المطبقي.'],f:['طاء: لا نقط','ظاء: نقطة فوق','عين: لا نقط','غين: نقطة فوق'],q:[{q:'من أين يخرج حرف العين؟',e:['الحلق','من الحلق'],c:'أحسنت! من الحلق',w:'العين حرف حلقي'},{q:'كم نقطة فوق الظاء؟',e:['واحدة','1','١'],c:'ممتاز! نقطة واحدة',w:'فوق الظاء نقطة'}]},
+    {id:'a06',t:'الحروف ف ق ك ل',n:['الفاء (ف) نقطة فوق، والقاف (ق) نقطتان فوق، والكاف (ك) بلا نقط، واللام (ل) بلا نقط.','القاف حرف قوي يخرج من الحلق. الكاف حرف مهم في كلمة "كتاب". اللام حرف مد.'],f:['فاء: نقطة فوق','قاف: نقطتان فوق','كاف: لا نقط','لام: لا نقط'],q:[{q:'كم نقطة فوق القاف؟',e:['اثنتان','2','٢','نقطتان'],c:'أحسنت! نقطتان',w:'فوق القاف نقطتان'},{q:'ما أول حرف في كلمة "كتاب"؟',e:['كاف','ك'],c:'ممتاز! الكاف',w:'أول حرف في كتاب هو الكاف'}]},
+    {id:'a07',t:'الحروف م ن ه و ي',n:['الميم (م) والنون (ن) والهاء (ه) والواو (و) والياء (ي). الميم لا نقط، والنون نقطة فوق، والهاء لا نقط، والواو لا نقط، والياء نقطتان تحت.','هذه آخر خمسة حروف في الأبجدية. الميم شكلها دائري، والنون تشبه الوعاء.'],f:['ميم: لا نقط','نون: نقطة فوق','هاء: لا نقط','واو: لا نقط','ياء: نقطتان تحت'],q:[{q:'كم نقطة تحت الياء؟',e:['اثنتان','2','٢','نقطتان'],c:'أحسنت! نقطتان تحت',w:'تحت الياء نقطتان'},{q:'أين نقطة النون؟',e:['فوق','فوق الحرف'],c:'ممتاز! فوق النون',w:'نقطة النون فوق الحرف'}]},
+    {id:'a08',t:'الحركات: الفتحة والضمة والكسرة',n:['الحركات ثلاث: الفتحة شرطة فوق الحرف (أَ)، والضمة واو صغيرة فوق الحرف (أُ)، والكسرة شرطة تحت الحرف (إِ).','الحركات تغير معنى الكلمة. "عِلْم" و"عَلَم" كلمتان مختلفتان بالحركات.'],f:['الفتحة: فوق','الضمة: فوق','الكسرة: تحت'],q:[{q:'الفتحة أين توضع؟',e:['فوق الحرف','فوق'],c:'أحسنت! فوق',w:'الفتحة فوق الحرف'},{q:'الكسرة أين توضع؟',e:['تحت الحرف','تحت'],c:'ممتاز! تحت',w:'الكسرة تحت الحرف'}]},
+    {id:'a09',t:'التنوين',n:['التنوين نون ساكنة زائدة في آخر الاسم. تنوين الفتح (اً)، تنوين الضم (ٌ)، تنوين الكسر (ٍ).','التنوين يعني إضافة نون في آخر الكلمة. نقول "بيتاً، بيتٌ، بيتٍ".'],f:['تنوين فتح:اً','تنوين ضم:ٌ','تنوين كسر:ٍ'],q:[{q:'كم نوعاً للتنوين؟',e:['ثلاث','3','٣','ثلاثة'],c:'أحسنت! ثلاثة أنواع',w:'التنوين ثلاثة أنواع'},{q:'تنوين الفتح كيف يكتب؟',e:['اً','الف الفتحة'],c:'ممتاز! اً',w:'تنوين الفتح اً'}]},
+    {id:'a10',t:'السكون والشدة',n:['السكون دائرة فوق الحرف تعني لا حركة عليه (بْ). الشدة علامة (ّ) تعني الحرف مشدد أي مكرر.','مثال الشدة: "الطّفل" حرف الطاء مشدد. "القطّ" حرف الطاء مشدد أيضاً.'],f:['سكون: ○ فوق','شدة: ّ','الحرف المشدد حرفان'],q:[{q:'علامة الشدة ماذا تعني؟',e:['الحرف مشدد','مكرر','حرفين'],c:'أحسنت! الحرف مشدد',w:'الشدة تعني الحرف مشدد'},{q:'السكون علامته ماذا؟',e:['دائرة','○','دائرة فوق'],c:'ممتاز! دائرة فوق الحرف',w:'السكون دائرة فوق الحرف'}]},{id:'a11',t:'المدود',n:['المدود ثلاثة: الألف (ا) مد بالفتح، والواو (و) مد بالضم، والياء (ي) مد بالكسر.','المد إطالة الصوت بحرف المد. مثال: "قَالَ" مد بالألف، "يَقُولُ" مد بالواو، "قِيلَ" مد بالياء.'],f:['مد بالألف','مد بالواو','مد بالياء'],q:[{q:'كم حرف مد في العربية؟',e:['3','ثلاثة','٣','ثلاث'],c:'أحسنت! ثلاثة أحرف',w:'المدود ثلاثة: الألف والواو والياء'},{q:'حرف المد بالفتح هو؟',e:['الألف','ا','الالف'],c:'ممتاز! الألف',w:'المد بالفتح هو الألف'}]},{id:'a12',t:'التاء المربوطة والمفتوحة',n:['التاء المربوطة (ة) تنطق هاء عند الوقف وتاء عند الوصل. التاء المفتوحة (ت) تنطق تاء دائماً.','مثال المربوطة: "مدرسة" تنطق "مدرسه" عند الوقف. مثال المفتوحة: "بيت" تاء مفتوحة.'],f:['تاء مربوطة: ة','تاء مفتوحة: ت','المربوطة تنطق هاء في الوقف'],q:[{q:'التاء المربوطة تنطق إيش عند الوقف؟',e:['هاء','ه'],c:'أحسنت! تنطق هاء',w:'التاء المربوطة تنطق هاء في الوقف'},{q:'التاء المفتوحة علامتها؟',e:['ت','تاء'],c:'ممتاز! تاء مفتوحة',w:'التاء المفتوحة تكتب (ت)'}]},{id:'a13',t:'ال الشمسية وال القمرية',n:['ال الشمسية: تكتب اللام ولا تنطق، ويشدد الحرف بعدها. "الشمس" تنطق "أشّمس". ال القمرية: تنطق اللام. "القمر" تنطق "ألقمر".'],f:['الشمسية: لام لا تنطق','القمرية: لام تنطق','الحرف المشدد بعد ال الشمسية'],q:[{q:'في "الشمس" هل ننطق اللام؟',e:['لا','ما ننطقها'],c:'أحسنت! لا تنطق',w:'في الشمسية لا تنطق اللام'},{q:'في "القمر" هل ننطق اللام؟',e:['نعم','ننطقها'],c:'ممتاز! تنطق',w:'في القمرية تنطق اللام'}]},{id:'a14',t:'أقسام الكلمة: الاسم',n:['الاسم هو ما دل على إنسان أو حيوان أو نبات أو جماد. مثل: أحمد، كتاب، قطة. الاسم يعرف بأل أو التنوين.','الاسم نوعان: اسم علم (محمد) واسم عام (كتاب).'],f:['الاسم: إنسان، حيوان، نبات، جماد','الاسم يعرف بأل والتنوين'],q:[{q:'الاسم دل على ماذا؟',e:['إنسان أو حيوان','انسان','حيوان','نبات','جماد'],c:'أحسنت! إنسان أو حيوان أو نبات أو جماد',w:'الاسم يدل على إنسان أو حيوان أو نبات أو جماد'},{q:'بماذا يعرف الاسم؟',e:['أل','أل والتنوين','ال','التنوين'],c:'ممتاز! بأل والتنوين',w:'الاسم يعرف بأل أو التنوين'}]},{id:'a15',t:'أقسام الكلمة: الفعل',n:['الفعل ما دل على حدث. مثل: كتب، أكل، شرب. الفعل يدل على زمن الحدث.','الفعل ثلاثة أنواع: فعل ماض (ذهب)، فعل مضارع (يذهب)، فعل أمر (اذهب).'],f:['فعل ماض: ذهب','فعل مضارع: يذهب','فعل أمر: اذهب'],q:[{q:'الفعل ما دل على ماذا؟',e:['حدث','فعل'],c:'أحسنت! على حدث',w:'الفعل يدل على حدث'},{q:'الفعل الماضي مثل؟',e:['ذهب','كتب','أكل','شرب'],c:'ممتاز! ذهب',w:'الفعل الماضي مثل ذهب'}]},{id:'a16',t:'أقسام الكلمة: الحرف',n:['الحرف كلمة لا معنى لها إلا مع غيرها. مثل: في، من، على، إلى، عن.','الحروف تستخدم للربط بين الكلمات. "ذهبت إلى المدرسة" - "إلى" حرف جر.'],f:['حروف الجر: في، من، على، إلى','الحرف لا معنى له وحده'],q:[{q:'هل للحرف معنى وحده؟',e:['لا','ليس','ما عنده'],c:'أحسنت! لا معنى له وحده',w:'الحرف لا معنى له إلا مع غيره'},{q:'"إلى" في جملة "ذهبت إلى المدرسة" إيش نوعها؟',e:['حرف','حرف جر'],c:'ممتاز! حرف جر',w:'إلى حرف جر'}]},{id:'a17',t:'الجملة الاسمية',n:['الجملة الاسمية تبدأ باسم. لها ركنان: المبتدأ والخبر. المبتدأ: اسم نبدأ به. الخبر: ما نخبر به عن المبتدأ.','مثال: "السماءُ صافيةٌ". السماء مبتدأ، صافية خبر. الجملة الاسمية تفيد الثبوت.'],f:['مبتدأ + خبر','تفيد الثبوت','مثال: السماء صافية'],q:[{q:'بماذا تبدأ الجملة الاسمية؟',e:['باسم','اسم'],c:'أحسنت! تبدأ باسم',w:'الجملة الاسمية تبدأ باسم'},{q:'الجملة الاسمية لها كم ركن؟',e:['2','اثنان','٢'],c:'ممتاز! ركنان: مبتدأ وخبر',w:'للجملة الاسمية ركنان: مبتدأ وخبر'}]},{id:'a18',t:'الجملة الفعلية',n:['الجملة الفعلية تبدأ بفعل. لها ركنان: الفعل والفاعل. الفعل: حدث، والفاعل: من فعل.','مثال: "أكلَ الولدُ". أكل فعل، الولد فاعل. الجملة الفعلية تفيد الحدوث.'],f:['فعل + فاعل','تفيد الحدوث','مثال: أكل الولد'],q:[{q:'الجملة الفعلية تبدأ بماذا؟',e:['بفعل','فعل'],c:'أحسنت! تبدأ بفعل',w:'الجملة الفعلية تبدأ بفعل'},{q:'الجملة الفعلية تفيد ماذا؟',e:['الحدوث','حدث'],c:'ممتاز! تفيد الحدوث',w:'الجملة الفعلية تفيد الحدوث'}]},{id:'a19',t:'الفاعل والمفعول به',n:['الفاعل من قام بالفعل. المفعول به من وقع عليه الفعل. الفاعل مرفوع، والمفعول به منصوب.','مثال: "أكلَ الولدُ التفاحةَ". الولدُ فاعل، التفاحةَ مفعول به.'],f:['الفاعل: من فعل','المفعول به: وقع عليه الفعل','الفاعل مرفوع، المفعول به منصوب'],q:[{q:'من هو الفاعل؟',e:['من فعل','من قام بالفعل'],c:'أحسنت! من فعل',w:'الفاعل من قام بالفعل'},{q:'المفعول به علامته إيش؟',e:['الفتحة','الفتح','منصوب'],c:'ممتاز! منصوب بالفتحة',w:'المفعول به منصوب'}]},{id:'a20',t:'المفرد والمثنى',n:['المفرد: يدل على واحد. المثنى: يدل على اثنين. يزيد المثنى بألف ونون في الرفع، أو ياء ونون في النصب والجر.','مثال المفرد: "كتاب". المثنى: "كتابان، كتابين".'],f:['مفرد: واحد','مثنى: اثنان + ان/ين'],q:[{q:'المفرد يدل على كم؟',e:['واحد','1','١'],c:'أحسنت! على واحد',w:'المفرد يدل على واحد'},{q:'المثنى يدل على كم؟',e:['اثنين','2','٢','اثنان'],c:'ممتاز! على اثنين',w:'المثنى يدل على اثنين'}]},{id:'a21',t:'جمع المذكر السالم',n:['جمع المذكر السالم يدل على ثلاثة فأكثر. يزيد بواو ونون في الرفع، وياء ونون في النصب والجر.','مثال: "معلم، معلمون، معلمين".'],f:['يدل على ثلاثة فأكثر','واو + نون في الرفع','ياء + نون في النصب والجر'],q:[{q:'جمع المذكر السالم يدل على كم؟',e:['ثلاثة فأكثر','3 فأكثر','ثلاث'],c:'أحسنت! على ثلاثة فأكثر',w:'يدل على ثلاثة فأكثر'},{q:'ماذا يزيد في الرفع؟',e:['واو ونون','واو + نون'],c:'ممتاز! واو ونون',w:'يزيد بواو ونون في الرفع'}]},{id:'a22',t:'جمع المؤنث السالم',n:['جمع المؤنث السالم يزيد بألف وتاء. مثال: "معلمة، معلمات".','جمع المؤنث السالم خاص بالاسم المؤنث.'],f:['ألف + تاء','خاص بالمؤنث'],q:[{q:'ماذا يزيد في جمع المؤنث السالم؟',e:['ألف وتاء','الف وتاء','الف + تاء'],c:'أحسنت! ألف وتاء',w:'يزيد بألف وتاء'},{q:'جمع المؤنث السالم خاص بماذا؟',e:['المؤنث','الاسم المؤنث','بالمؤنث'],c:'ممتاز! خاص بالمؤنث',w:'خاص بالاسم المؤنث'}]},{id:'a23',t:'المذكر والمؤنث',n:['المذكر: يدل على ذكر. المؤنث: يدل على أنثى. المؤنث يزيد بتاء مربوطة أو ألف مقصورة.','مثال: "معلم" مذكر، "معلمة" مؤنث. "أسد" مذكر، "لبؤة" مؤنث.'],f:['مذكر: يدل على ذكر','مؤنث: يدل على أنثى','المؤنث: تاء مربوطة'],q:[{q:'المذكر يدل على ماذا؟',e:['ذكر','ولد'],c:'أحسنت! على ذكر',w:'المذكر يدل على ذكر'},{q:'المؤنث يدل على ماذا؟',e:['أنثى','بنت'],c:'ممتاز! على أنثى',w:'المؤنث يدل على أنثى'}]},{id:'a24',t:'الضمائر',n:['الضمائر: أنا، أنت، هو، هي، نحن، أنتم، هم. الضمائر تحل محل الاسم.','مثال: "أنا أدرس، أنتِ تقرأين، هو يلعب، هي تغني".'],f:['ضمائر المتكلم: أنا، نحن','ضمائر المخاطب: أنت، أنتم','ضمائر الغائب: هو، هي، هم'],q:[{q:'الضمائر تحل محل ماذا؟',e:['الاسم','اسم'],c:'أحسنت! محل الاسم',w:'الضمائر تحل محل الاسم'},{q:'من ضمائر المتكلم؟',e:['أنا','نحن'],c:'ممتاز! أنا ونحن',w:'ضمائر المتكلم: أنا ونحن'}]},{id:'a25',t:'حروف الجر',n:['حروف الجر: في، من، إلى، على، عن، مع، لام، باء، كاف. تجر الاسم الذي بعدها.','مثال: "في البيت، من المدرسة، إلى المسجد، على الطاولة".'],f:['في، من، إلى، على، عن','حروف الجر تجر الاسم'],q:[{q:'هل "في" حرف جر؟',e:['نعم','اي','ايه'],c:'أحسنت! في حرف جر',w:'نعم، في حرف جر'},{q:'حروف الجر ماذا تفعل بالاسم؟',e:['تجره','تجر','جر'],c:'ممتاز! تجر الاسم',w:'حروف الجر تجر الاسم بعدها'}]},{id:'a26',t:'العطف',n:['العطف ربط كلمتين بحرف عطف. حروف العطف: و، ف، ثم، أو.','مثال: "جاء محمد وخالد". الواو حرف عطف. "سافر ثم عاد".'],f:['و، ف، ثم، أو','العطف يربط الكلمات'],q:[{q:'من حروف العطف؟',e:['و','ف','ثم','أو'],c:'أحسنت! واو العطف',w:'حروف العطف: و، ف، ثم، أو'},{q:'العطف يربط ماذا؟',e:['كلمتين','كلمات','الكلمات'],c:'ممتاز! يربط الكلمات',w:'العطف يربط كلمتين بحرف عطف'}]},{id:'a27',t:'كتابة فقرة',n:['الفقرة مجموعة جمل مترابطة تبدأ بجملة رئيسية وتنتهي بجملة ختامية. نبدأ الفقرة بفراغ في أول السطر.','مثال: "في صباح يوم جميل، ذهبت إلى المدرسة. قابلت أصدقائي وبدأنا الدرس. كان يوماً رائعاً."'],f:['فقرة: مجموعة جمل','تبدأ بجملة رئيسية','تنتهي بجملة ختامية'],q:[{q:'الفقرة مجموعة ماذا؟',e:['جمل','جمل مترابطة'],c:'أحسنت! مجموعة جمل',w:'الفقرة مجموعة جمل مترابطة'},{q:'الفقرة تبدأ بجملة إيش؟',e:['رئيسية','مهمة'],c:'ممتاز! بجملة رئيسية',w:'تبدأ الفقرة بجملة رئيسية'}]},{id:'a28',t:'الترقيق والتفخيم',n:['بعض الحروف ترقق (تنطق رقيقة) وبعضها تفخم (تنطق غليظة). حروف التفخيم: خص ضغط قظ.','الراء إما مرققة أو مفخمة حسب موقعها. لام لفظ الجلالة تفخم.'],f:['حروف التفخيم: خص ضغط قظ','اللام في لفظ الجلالة مفخمة'],q:[{q:'حروف التفخيم إيش؟',e:['خص ضغط قظ'],c:'أحسنت! خص ضغط قظ',w:'حروف التفخيم: خص ضغط قظ'},{q:'هل لام لفظ الجلالة مفخمة؟',e:['نعم','اي','مفخمة'],c:'ممتاز! مفخمة',w:'لام لفظ الجلالة مفخمة'}]},{id:'a29',t:'الإملاء: همزة الوصل والقطع',n:['همزة الوصل: همزة تنطق في أول الكلام ولا تنطق في وسطه. تكتب بدون همزة. همزة القطع: همزة تنطق دائماً وتكتب أ أو إ.','مثال همزة الوصل: "استغفر، اسم". مثال همزة القطع: "أكل، إيمان".'],f:['همزة الوصل: بدون همزة','همزة القطع: أ أو إ'],q:[{q:'همزة الوصل تنطق في أول الكلام؟',e:['نعم','اي'],c:'أحسنت! تنطق في أوله',w:'تنطق في أول الكلام'},{q:'همزة القطع تكتب؟',e:['أ أو إ','أ','إ'],c:'ممتاز! أ أو إ',w:'تكتب أ أو إ'}]},{id:'a30',t:'الإملاء: الألف اللينة',n:['الألف اللينة: ألف ساكنة في آخر الكلمة. تكتب في الأفعال (علا) وفي الأسماء (هدى) وفي الحروف (إلى).','الألف اللينة تكتب ألف بدون همزة في آخر الكلمة.'],f:['ألف ساكنة في آخر الكلمة','تكتب بدون همزة'],q:[{q:'أين تكتب الألف اللينة؟',e:['آخر الكلمة','اخر الكلمة'],c:'أحسنت! في آخر الكلمة',w:'تكتب في آخر الكلمة'},{q:'هل الألف اللينة تكتب بهمزة؟',e:['لا','بدون همزة','لا همزة'],c:'ممتاز! بدون همزة',w:'تكتب بدون همزة'}]},{id:'a31',t:'أسلوب النداء',n:['النداء: نداء شخص بحرف نداء. حروف النداء: يا، أيا، هيا. المنادى اسم يطلب.','مثال: "يا محمد، تعال هنا". يا حرف نداء، محمد منادى.'],f:['يا، أيا، هيا','المنادى: اسم يطلب'],q:[{q:'من حروف النداء؟',e:['يا','أيا','هيا'],c:'أحسنت! يا',w:'حروف النداء: يا، أيا، هيا'},{q:'المنادى هو إيش؟',e:['اسم يطلب','اسم'],c:'ممتاز! اسم يطلب',w:'المنادى اسم يطلب'}]},{id:'a32',t:'أسلوب التعجب',n:['التعجب: أسلوب يعبر عن الدهشة. صيغتان: ما أفعله! وأفعل به! مثال: "ما أجمل السماء! وأجمل بالسماء!"'],f:['ما أفعله!','أفعل به!','يدل على الدهشة'],q:[{q:'التعجب يعبر عن إيش؟',e:['الدهشة','دهشة'],c:'أحسنت! عن الدهشة',w:'التعجب يعبر عن الدهشة'},{q:'ما صيغ التعجب؟',e:['ما أفعله وأفعل به','ما أفعله','أفعل به'],c:'ممتاز! ما أفعله وأفعل به',w:'صيغتا التعجب: ما أفعله وأفعل به'}]},{id:'a33',t:'أسلوب الأمر والنهي',n:['الأمر: طلب الفعل. "اكتب الدرس". النهي: طلب الكف عن الفعل. "لا تلعب في الفصل".','أسلوب الأمر يستخدم فعل أمر. النهي يستخدم لا + فعل مضارع.'],f:['الأمر: فعل أمر','النهي: لا + فعل مضارع'],q:[{q:'الأمر هو طلب ماذا؟',e:['الفعل','فعل'],c:'أحسنت! طلب الفعل',w:'الأمر طلب الفعل'},{q:'النهي يدخل على الفعل بماذا؟',e:['لا','لا الناهية'],c:'ممتاز! بلا',w:'النهي بلا + فعل مضارع'}]},{id:'a34',t:'الاستفهام',n:['الاستفهام: سؤال عن شيء. أدوات الاستفهام: هل، أ، من، ما، أين، متى، كيف، لماذا.','مثال: "هل ذهبت إلى المدرسة؟"، "أين كتابك؟"، "كيف حالك؟".'],f:['هل، أ، من، ما، أين','متى، كيف، لماذا','الجملة الاستفهامية تنتهي بعلامة استفهام'],q:[{q:'من أدوات الاستفهام؟',e:['هل','أ','من','ما','أين'],c:'أحسنت! هل',w:'من أدوات الاستفهام: هل، أ، من'},{q:'بماذا تنتهي الجملة الاستفهامية؟',e:['علامة استفهام','?','استفهام'],c:'ممتاز! بعلامة استفهام',w:'تنتهي بعلامة استفهام'}]}
+  ],
+  // --- English: 20 lessons ---
+  english:[
+    {id:'e01',t:'Alphabet A-G',n:['Learn letters A, B, C, D, E, F, G. A for Apple, B for Ball, C for Cat, D for Dog, E for Elephant, F for Fish, G for Girl.','Each letter has a capital and small form. Practice saying them with their sounds.'],f:['A: Apple /æ/','B: Ball /b/','C: Cat /k/','D: Dog /d/','E: Elephant /e/','F: Fish /f/','G: Girl /g/'],q:[{q:'What letter is for Apple?',e:['A','a'],c:'Great! A is for Apple!',w:'Try again! A for Apple'},{q:'What letter is for Dog?',e:['D','d'],c:'Excellent! D is for Dog!',w:'Think again! D for Dog'}]},
+    {id:'e02',t:'Alphabet H-N',n:['Letters H, I, J, K, L, M, N. H for Hat, I for Igloo, J for Jug, K for Kite, L for Lion, M for Monkey, N for Nest.','Practice the sounds carefully. I is a vowel like Arabic كسرة.'],f:['H: Hat /h/','I: Igloo /ɪ/','J: Jug /dʒ/','K: Kite /k/','L: Lion /l/','M: Monkey /m/','N: Nest /n/'],q:[{q:'What is H for?',e:['Hat','hat'],c:'Great! H for Hat!',w:'Try: H for Hat'},{q:'What letter is for Lion?',e:['L','l'],c:'Excellent! L for Lion!',w:'Think: L for Lion'}]},
+    {id:'e03',t:'Alphabet O-U',n:['Letters O, P, Q, R, S, T, U. O for Orange, P for Pen, Q for Queen, R for Rabbit, S for Sun, T for Table, U for Umbrella.','Q always needs U after it in English: Queen, Quick.'],f:['O: Orange /ɒ/','P: Pen /p/','Q: Queen /kw/','R: Rabbit /r/','S: Sun /s/','T: Table /t/','U: Umbrella /ʌ/'],q:[{q:'What is O for?',e:['Orange','orange'],c:'Great! O for Orange!',w:'Try: O for Orange'},{q:'What letter comes after Q in Queen?',e:['U','u'],c:'Excellent! Q needs U!',w:'Q always needs U after it'}]},
+    {id:'e04',t:'Alphabet V-Z',n:['Letters V, W, X, Y, Z. V for Violin, W for Water, X for Xylophone, Y for Yellow, Z for Zebra.','Now you know all 26 letters! Practice the alphabet song.'],f:['V: Violin /v/','W: Water /w/','X: Xylophone /ks/','Y: Yellow /j/','Z: Zebra /z/'],q:[{q:'What is V for?',e:['Violin','violin'],c:'Great! V for Violin!',w:'Try: V for Violin'},{q:'What letter is for Zebra?',e:['Z','z'],c:'Excellent! Z for Zebra!',w:'Think: Z for Zebra'}]},
+    {id:'e05',t:'Short Vowels',n:['Short vowels: a /æ/ as in cat, e /e/ as in bed, i /ɪ/ as in sit, o /ɒ/ as in hot, u /ʌ/ as in cup.','Short vowels are quick sounds. Practice: a-apple, e-egg, i-igloo, o-ox, u-umbrella.'],f:['a: /æ/ cat','e: /e/ bed','i: /ɪ/ sit','o: /ɒ/ hot','u: /ʌ/ cup'],q:[{q:'How many short vowels are there?',e:['5','five'],c:'Great! 5 short vowels!',w:'There are 5 short vowels: a,e,i,o,u'},{q:'What is the short a sound as in cat?',e:['/æ/','æ'],c:'Excellent! /æ/!',w:'Short a says /æ/ as in cat'}]},
+    {id:'e06',t:'Long Vowels',n:['Long vowels say their name. a /eɪ/ as in cake, e /iː/ as in tree, i /aɪ/ as in bike, o /oʊ/ as in home, u /juː/ as in cube.','Long vowels are held longer than short vowels.'],f:['a: /eɪ/ cake','e: /iː/ tree','i: /aɪ/ bike','o: /oʊ/ home','u: /juː/ cube'],q:[{q:'How many long vowels are there?',e:['5','five'],c:'Great! 5 long vowels!',w:'There are 5 long vowels: a,e,i,o,u'},{q:'What is the long a sound as in cake?',e:['/eɪ/','eɪ'],c:'Excellent! /eɪ/!',w:'Long a says /eɪ/ as in cake'}]},
+    {id:'e07',t:'Numbers 1-10',n:['Numbers: one, two, three, four, five, six, seven, eight, nine, ten.','Let us count together: 1 one, 2 two, 3 three, 4 four, 5 five, 6 six, 7 seven, 8 eight, 9 nine, 10 ten.'],f:['1 one', '2 two', '3 three', '4 four', '5 five', '6 six', '7 seven', '8 eight', '9 nine', '10 ten'],q:[{q:'What number comes after 5?',e:['6','six'],c:'Great! 6 comes after 5!',w:'5 then 6'},{q:'What is the number 3 in English?',e:['three','Three'],c:'Excellent! Three!',w:'3 is three in English'}]},
+    {id:'e08',t:'Numbers 11-20',n:['Numbers 11 to 20: eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen, twenty.','Notice: thirteen to nineteen end with "-teen".'],f:['11 eleven', '12 twelve', '13 thirteen', '14 fourteen', '15 fifteen', '16 sixteen', '17 seventeen', '18 eighteen', '19 nineteen', '20 twenty'],q:[{q:'What is 11 in English?',e:['eleven','Eleven'],c:'Great! Eleven!',w:'11 is eleven'},{q:'What is 20 in English?',e:['twenty','Twenty'],c:'Excellent! Twenty!',w:'20 is twenty'}]},
+    {id:'e09',t:'Colors',n:['Colors in English: red, blue, green, yellow, black, white, orange, purple, pink, brown.','The sky is blue. The grass is green. The sun is yellow.'],f:['Red, Blue, Green','Yellow, Black, White','Orange, Purple, Pink, Brown'],q:[{q:'What color is the sky?',e:['blue','Blue'],c:'Great! The sky is blue!',w:'The sky is blue'},{q:'What color is the sun?',e:['yellow','Yellow'],c:'Excellent! The sun is yellow!',w:'The sun is yellow'}]},
+    {id:'e10',t:'Shapes',n:['Shapes: circle ⭕, square ◼️, triangle 🔺, rectangle ▬, star ⭐, heart ❤️, diamond ◆.','A ball is a circle. A book is a rectangle. A pyramid has triangles.'],f:['Circle, Square, Triangle','Rectangle, Star, Heart, Diamond'],q:[{q:'What shape is a ball?',e:['circle','Circle'],c:'Great! A ball is a circle!',w:'A ball is a circle'},{q:'What shape has 3 sides?',e:['triangle','Triangle'],c:'Excellent! Triangle has 3 sides!',w:'A triangle has 3 sides'}]},
+    {id:'e11',t:'My Family',n:['Family: father, mother, brother, sister, baby, grandfather, grandmother.','My father is strong. My mother is kind. I love my family.'],f:['Father, Mother','Brother, Sister','Baby, Grandfather, Grandmother'],q:[{q:'Who is your father?',e:['father','Father','my father','ابوي','بابا'],c:'Great! Your father!',w:'Your father is the man in your family'},{q:'Who is your mother?',e:['mother','Mother','my mother','امي','ماما'],c:'Excellent! Your mother!',w:'Your mother is the woman who takes care of you'}]},
+    {id:'e12',t:'School Objects',n:['School objects: book, pen, pencil, eraser, ruler, bag, desk, chair.','I have a blue pen. This is my book. Where is my bag?'],f:['Book, Pen, Pencil','Eraser, Ruler, Bag','Desk, Chair'],q:[{q:'What do you write with?',e:['pen','Pen','pencil','Pencil'],c:'Great! A pen or pencil!',w:'You write with a pen or pencil'},{q:'What do you use to erase?',e:['eraser','Eraser'],c:'Excellent! An eraser!',w:'An eraser helps you erase'}]},
+    {id:'e13',t:'Body Parts',n:['Body: head, eyes, nose, mouth, ears, hands, feet, arms, legs.','We see with our eyes. We smell with our nose. We hear with our ears.'],f:['Head, Eyes, Nose','Mouth, Ears, Hands','Feet, Arms, Legs'],q:[{q:'What do you see with?',e:['eyes','Eyes','Eye','eye'],c:'Great! You see with your eyes!',w:'You see with your eyes'},{q:'What do you hear with?',e:['ears','Ears','Ear','ear'],c:'Excellent! You hear with your ears!',w:'You hear with your ears'}]},
+    {id:'e14',t:'Animals',n:['Animals: cat, dog, bird, fish, lion, elephant, monkey, horse, cow, chicken.','A cat says meow. A dog says woof. A lion roars.'],f:['Cat, Dog, Bird, Fish','Lion, Elephant, Monkey','Horse, Cow, Chicken'],q:[{q:'What animal says meow?',e:['cat','Cat'],c:'Great! A cat says meow!',w:'A cat says meow'},{q:'What animal says woof?',e:['dog','Dog'],c:'Excellent! A dog says woof!',w:'A dog says woof'}]},
+    {id:'e15',t:'Food & Drinks',n:['Food: bread, rice, meat, chicken, fish, apple, banana, milk, water, juice.','I eat bread and rice. I drink water and milk. Breakfast is important.'],f:['Bread, Rice, Meat','Chicken, Fish, Apple, Banana','Milk, Water, Juice'],q:[{q:'What do you drink?',e:['water','Water','milk','Milk','juice','Juice'],c:'Great! Water, milk, or juice!',w:'You drink water, milk, or juice'},{q:'What fruit is yellow?',e:['banana','Banana'],c:'Excellent! A banana is yellow!',w:'A banana is yellow'}]},
+    {id:'e16',t:'Weather & Seasons',n:['Weather: sunny, rainy, cloudy, windy, hot, cold. Seasons: spring, summer, autumn, winter.','In summer it is hot. In winter it is cold. Spring is beautiful.'],f:['Sunny, Rainy, Cloudy, Windy','Hot, Cold','Spring, Summer, Autumn, Winter'],q:[{q:'How many seasons are there?',e:['4','four','Four'],c:'Great! 4 seasons!',w:'There are 4 seasons'},{q:'Which season is hot?',e:['summer','Summer'],c:'Excellent! Summer is hot!',w:'Summer is the hot season'}]},
+    {id:'e17',t:'Action Verbs',n:['Actions: run, jump, eat, drink, sleep, read, write, play, sing, dance.','I can run fast. I like to play football. My sister sings beautifully.'],f:['Run, Jump, Eat, Drink','Sleep, Read, Write','Play, Sing, Dance'],q:[{q:'What do you do with a book?',e:['read','Read'],c:'Great! You read a book!',w:'You read a book'},{q:'What do you do with food?',e:['eat','Eat'],c:'Excellent! You eat food!',w:'You eat food'}]},
+    {id:'e18',t:'Simple Sentences',n:['Simple sentences: I am a student. You are my friend. This is a book. That is a pen.','Use "am" with I. Use "is" with he/she/it. Use "are" with you/we/they.'],f:['I am, You are, He/She/It is','This is, That is','Subject + verb + object'],q:[{q:'Which word goes with I?',e:['am','Am'],c:'Great! I am!',w:'Use "am" with I'},{q:'Which word goes with he?',e:['is','Is'],c:'Excellent! He is!',w:'Use "is" with he'}]},
+    {id:'e19',t:'My House',n:['House: kitchen, bedroom, bathroom, living room, garden, door, window.','I sleep in my bedroom. My mother cooks in the kitchen. We play in the garden.'],f:['Kitchen, Bedroom, Bathroom','Living Room, Garden','Door, Window'],q:[{q:'Where do you sleep?',e:['bedroom','Bedroom'],c:'Great! In the bedroom!',w:'You sleep in the bedroom'},{q:'Where does your mother cook?',e:['kitchen','Kitchen'],c:'Excellent! In the kitchen!',w:'Mother cooks in the kitchen'}]},
+    {id:'e20',t:'Greetings & Feelings',n:['Greetings: Hello, Good morning, Goodbye, How are you? Feelings: happy, sad, angry, scared, tired.','Hello, how are you? I am happy. Goodbye! See you later.'],f:['Hello, Good morning, Goodbye','How are you?','Happy, Sad, Angry, Scared, Tired'],q:[{q:'What do you say in the morning?',e:['Good morning','good morning','Morning','morning'],c:'Great! Good morning!',w:'Say "Good morning" in the morning'},{q:'What is the opposite of happy?',e:['sad','Sad'],c:'Excellent! Sad!',w:'The opposite of happy is sad'}]}
+  ],
+  // --- الرياضيات: 22 درساً ---
+  math:[
+    {id:'m01',t:'الأعداد 1-10',n:['الأعداد من واحد إلى عشرة: 1 واحد، 2 اثنان، 3 ثلاثة، 4 أربعة، 5 خمسة، 6 ستة، 7 سبعة، 8 ثمانية، 9 تسعة، 10 عشرة.','نعد بأصابعنا. في اليد خمس أصابع. في اليدين عشر أصابع.'],f:['1-5: واحد إلى خمسة','6-10: ستة إلى عشرة'],q:[{q:'كم إصبعاً في اليد الواحدة؟',e:['5','خمسة','٥'],c:'أحسنت! خمس أصابع',w:'في اليد خمس أصابع'},{q:'كم إصبعاً في اليدين؟',e:['10','عشرة','١٠'],c:'ممتاز! عشر أصابع',w:'في اليدين عشر أصابع'}]},
+    {id:'m02',t:'الأعداد 11-20',n:['الأعداد من 11 إلى 20: 11 أحد عشر، 12 اثنا عشر، 13 ثلاثة عشر، 14 أربعة عشر، 15 خمسة عشر، 16 ستة عشر، 17 سبعة عشر، 18 ثمانية عشر، 19 تسعة عشر، 20 عشرون.','لاحظ أن الأعداد من 13 إلى 19 تنتهي بكلمة "عشر".'],f:['11: أحد عشر','15: خمسة عشر','20: عشرون'],q:[{q:'كم عدد 15 بالعربي؟',e:['خمسة عشر','15','١٥'],c:'أحسنت! خمسة عشر',w:'15 = خمسة عشر'},{q:'الأعداد 13-19 تنتهي بكلمة؟',e:['عشر','عشرة'],c:'ممتاز! عشر',w:'تنتهي بكلمة عشر'}]},{id:'m03',t:'الأعداد 21-50',n:['الأعداد من 21 إلى 50: 21 واحد وعشرون، 22 اثنان وعشرون... 30 ثلاثون، 40 أربعون، 50 خمسون.','الأعداد تتركب من: عدد + و + عشرون/ثلاثون/أربعون/خمسون.'],f:['21: واحد وعشرون','30: ثلاثون','40: أربعون','50: خمسون'],q:[{q:'21 بالعربي؟',e:['واحد وعشرون','21','٢١'],c:'أحسنت! واحد وعشرون',w:'21 = واحد وعشرون'},{q:'30 بالعربي؟',e:['ثلاثون','30','٣٠'],c:'ممتاز! ثلاثون',w:'30 = ثلاثون'}]},{id:'m04',t:'الأعداد 51-100',n:['الأعداد من 51 إلى 100: 60 ستون، 70 سبعون، 80 ثمانون، 90 تسعون، 100 مئة.','مئة = 100. مئة تتكون من عشرة عشرات.'],f:['60: ستون','70: سبعون','80: ثمانون','90: تسعون','100: مئة'],q:[{q:'60 بالعربي؟',e:['ستون','60','٦٠'],c:'أحسنت! ستون',w:'60 = ستون'},{q:'100 بالعربي؟',e:['مئة','100','مائة','١٠٠'],c:'ممتاز! مئة',w:'100 = مئة'}]},{id:'m05',t:'الجمع حتى 10',n:['الجمع: إضافة عدد إلى آخر. 1+1=2، 2+2=4، 3+2=5، 4+3=7، 5+5=10.','إذا كان عندك 3 أقلام وأعطيتك 2، يصبح عندك 5.'],f:['+ علامة الجمع','= علامة يساوي'],q:[{q:'1+1=كم؟',e:['2','اثنان','٢'],c:'أحسنت! 2',w:'1+1=2'},{q:'5+5=كم؟',e:['10','عشرة','١٠'],c:'ممتاز! 10',w:'5+5=10'}]},
+    {id:'m06',t:'الطرح حتى 10',n:['الطرح: إزالة عدد من عدد. 5-2=3، 10-4=6، 7-3=4.','إذا كان عندك 5 تفاحات وأكلت 2، يبقى 3.'],f:['- علامة الطرح','الطرح عكس الجمع'],q:[{q:'5-2=كم؟',e:['3','ثلاثة','٣'],c:'أحسنت! 3',w:'5-2=3'},{q:'10-4=كم؟',e:['6','ستة','٦'],c:'ممتاز! 6',w:'10-4=6'}]},
+    {id:'m07',t:'الجمع حتى 20',n:['الجمع مع أعداد أكبر: 10+5=15، 12+3=15، 14+6=20.','نجمع الآحاد مع الآحاد والعشرات مع العشرات.'],f:['نجمع الآحاد معاً','نجمع العشرات معاً'],q:[{q:'10+5=كم؟',e:['15','خمسة عشر','١٥'],c:'أحسنت! 15',w:'10+5=15'},{q:'14+6=كم؟',e:['20','عشرون','٢٠'],c:'ممتاز! 20',w:'14+6=20'}]},
+    {id:'m08',t:'الطرح حتى 20',n:['الطرح مع أعداد أكبر: 15-5=10، 18-8=10، 20-7=13.','نطرح الآحاد من الآحاد والعشرات من العشرات.'],f:['نطرح الآحاد','نطرح العشرات'],q:[{q:'15-5=كم؟',e:['10','عشرة','١٠'],c:'أحسنت! 10',w:'15-5=10'},{q:'20-7=كم؟',e:['13','ثلاثة عشر','١٣'],c:'ممتاز! 13',w:'20-7=13'}]},
+    {id:'m09',t:'الجمع بالحمل',n:['عند جمع عددين ويكون مجموع الآحاد 10 أو أكثر، نكتب الآحاد ونحمل العشرات. مثال: 17+5=22، نكتب 2 ونحمل 1.','17+5: 7+5=12 نكتب 2 ونحمل 1، 1+1=2. الناتج 22.'],f:['نجمع الآحاد أولاً','إذا كان المجموع ≥10 نحمل'],q:[{q:'17+5=كم؟',e:['22','اثنان وعشرون','٢٢'],c:'أحسنت! 22',w:'17+5=22'}]},
+    {id:'m10',t:'الطرح بالاستلاف',n:['عند طرح عددين ويكون آحاد المطروح منه أقل من آحاد المطروح، نستلف من العشرات. مثال: 23-8=15.','23-8: نستلف 1 من 2 فتصبح 13-8=5 وتبقى 1. الناتج 15.'],f:['نستلف من العشرات','نزيد الآحاد 10'],q:[{q:'23-8=كم؟',e:['15','خمسة عشر','١٥'],c:'أحسنت! 15',w:'23-8=15'}]},
+    {id:'m11',t:'جداول الضرب 2 و5 و10',n:['الضرب: جمع متكرر. 2×3=2+2+2=6. جدول 2: 2,4,6,8,10,12,14,16,18,20. جدول 5: 5,10,15,20,25,30,35,40,45,50. جدول 10: 10,20,30,40,50,60,70,80,90,100.'],f:['2×: 2,4,6,8,10','5×: 5,10,15,20,25','10×: 10,20,30,40,50'],q:[{q:'2×3 كم؟',e:['6','ستة','٦'],c:'أحسنت! 6',w:'2×3=6'},{q:'5×2 كم؟',e:['10','عشرة','١٠'],c:'ممتاز! 10',w:'5×2=10'}]},{id:'m12',t:'الضرب للأعداد 3 و4',n:['جدول 3: 3,6,9,12,15,18,21,24,27,30. جدول 4: 4,8,12,16,20,24,28,32,36,40.','الضرب يساعدنا على الحساب السريع.'],f:['3×: 3,6,9,12,15','4×: 4,8,12,16,20'],q:[{q:'3×3 كم؟',e:['9','تسعة','٩'],c:'أحسنت! 9',w:'3×3=9'},{q:'4×2 كم؟',e:['8','ثمانية','٨'],c:'ممتاز! 8',w:'4×2=8'}]},{id:'m13',t:'القسمة',n:['القسمة: توزيع عدد بالتساوي. 10÷2=5 يعني 10 تقسم إلى مجموعتين كل مجموعة 5.','القسمة عكس الضرب. إذا 2×5=10 فهذا يعني 10÷2=5.'],f:['÷ علامة القسمة','القسمة توزيع بالتساوي'],q:[{q:'10÷2 كم؟',e:['5','خمسة','٥'],c:'أحسنت! 5',w:'10÷2=5'},{q:'القسمة عكس إيش؟',e:['الضرب','الضرب'],c:'ممتاز! عكس الضرب',w:'القسمة عكس الضرب'}]},{id:'m14',t:'الكسور',n:['الكسر: جزء من الكل. ½ نصف، ⅓ ثلث، ¼ ربع. البسط فوق والمقام تحت.','نصف البيتزا = ½. ربع التفاحة = ¼.'],f:['½ نصف','⅓ ثلث','¼ ربع','بسط / مقام'],q:[{q:'الكسر ½ يعني إيش؟',e:['نصف','نص'],c:'أحسنت! نصف',w:'½ يعني نصف'},{q:'الكسر ¼ يعني إيش؟',e:['ربع','رب'],c:'ممتاز! ربع',w:'¼ يعني ربع'}]},{id:'m15',t:'الأشكال الهندسية',n:['المربع: 4 أضلاع متساوية. المستطيل: 4 أضلاع كل ضلعين متساويين. المثلث: 3 أضلاع. الدائرة: خط منحن.','المربع: كل أضلاعه متساوية وزواياه قائمة. المستطيل: له طول وعرض.'],f:['مربع: 4 أضلاع متساوية','مستطيل: طول وعرض','مثلث: 3 أضلاع','دائرة: منحنية'],q:[{q:'للمربع كم ضلع؟',e:['4','أربعة','٤','اربعة'],c:'أحسنت! 4 أضلاع',w:'المربع له 4 أضلاع'},{q:'للمثلث كم ضلع؟',e:['3','ثلاثة','٣','ثلاث'],c:'ممتاز! 3 أضلاع',w:'المثلث له 3 أضلاع'}]},{id:'m16',t:'المجسمات',n:['المكعب: 6 أوجه مثل علبة الهدية. الكرة: مثل كرة القدم. الأسطوانة: مثل علبة العصير. الهرم: مثل الأهرامات.','كل مجسم له شكل ثلاثي الأبعاد.'],f:['مكعب: 6 أوجه','كرة: مستديرة','أسطوانة: علبة','هرم: مثلث الأوجه'],q:[{q:'للمكعب كم وجه؟',e:['6','ستة','٦'],c:'أحسنت! 6 أوجه',w:'المكعب له 6 أوجه'},{q:'أي مجسم مثل كرة القدم؟',e:['الكرة','كرة'],c:'ممتاز! الكرة',w:'كرة القدم مثل الكرة'}]},{id:'m17',t:'القياس: الطول',n:['الطول: نقيسه بالسنتيمتر والمتر. المسطرة تقيس بالسنتيمتر. المتر = 100 سنتيمتر.','نقيس طول الكتاب بالسنتمتر. نقيس طول الغرفة بالمتر.'],f:['سنتيمتر: سم','متر: م','1 م = 100 سم'],q:[{q:'بماذا نقيس الطول؟',e:['سنتيمتر','متر','المسطرة'],c:'أحسنت! بالسنتيمتر والمتر',w:'نقيس الطول بالسنتيمتر والمتر'},{q:'1 متر = كم سنتيمتر؟',e:['100','مئة','١٠٠'],c:'ممتاز! 100',w:'1 متر = 100 سنتيمتر'}]},{id:'m18',t:'القياس: الوزن',n:['الوزن: نقيسه بالكيلوغرام والغرام. التفاحة تزن 200 غرام. كيس الرز يزن 5 كيلوغرام.','1 كيلوغرام = 1000 غرام.'],f:['غرام: زنة التفاحة','كيلوغرام: زنة السكر','1 كغ = 1000 غ'],q:[{q:'بماذا نقيس الوزن؟',e:['كيلوغرام','غرام','كيلو'],c:'أحسنت! بالكيلوغرام والغرام',w:'نقيس الوزن بالكيلوغرام والغرام'},{q:'التفاحة تزن كم؟',e:['200 غرام','200'],c:'ممتاز! 200 غرام',w:'التفاحة تزن 200 غرام'}]},{id:'m19',t:'القياس: السعة',n:['السعة: كمية السائل. اللتر والمليلتر. زجاجة الماء = 1 لتر. ملعقة الدواء = 5 مليلتر.','1 لتر = 1000 مليلتر.'],f:['لتر: زجاجة ماء','مليلتر: ملعقة','1 ل = 1000 مل'],q:[{q:'بماذا نقيس السوائل؟',e:['لتر','مليلتر','لتر ومليلتر'],c:'أحسنت! باللتر والمليلتر',w:'نقيس السوائل باللتر والمليلتر'},{q:'زجاجة الماء كم لتر؟',e:['1','واحد','١'],c:'ممتاز! 1 لتر',w:'زجاجة الماء = 1 لتر'}]},{id:'m20',t:'الوقت والساعة',n:['الساعة تقيس الوقت. الساعة 60 دقيقة. اليوم 24 ساعة. عقرب الساعات الصغير وعقرب الدقائق الكبير.','الساعة الواحدة = 60 دقيقة. اليوم = 24 ساعة.'],f:['60 دقيقة = ساعة','24 ساعة = يوم','عقرب الساعات والدقائق'],q:[{q:'الساعة فيها كم دقيقة؟',e:['60','ستين','٦٠'],c:'أحسنت! 60 دقيقة',w:'الساعة = 60 دقيقة'},{q:'اليوم فيه كم ساعة؟',e:['24','أربعة وعشرين','٢٤'],c:'ممتاز! 24 ساعة',w:'اليوم = 24 ساعة'}]},{id:'m21',t:'النقود',n:['نقودنا الكويتية: الدينار الكويتي. الدينار = 1000 فلس. العملات: ¼ دينار، ½ دينار، 1 دينار.','الدينار الكويتي أغلى عملة في العالم.'],f:['الدينار الكويتي','1 دينار = 1000 فلس'],q:[{q:'عملة الكويت إيش اسمها؟',e:['الدينار','دينار','الدينار الكويتي'],c:'أحسنت! الدينار الكويتي',w:'عملة الكويت الدينار الكويتي'},{q:'الدينار = كم فلس؟',e:['1000','ألف','١٠٠٠'],c:'ممتاز! 1000 فلس',w:'الدينار = 1000 فلس'}]},{id:'m22',t:'التعامل مع البيانات',n:['البيانات: نعرضها بجدول أو رسم بياني. الإحصاء: جمع المعلومات وتنظيمها.','مثال: عدد الطلاب في الفصل. نرسم جدولاً بالأسماء والأعداد.'],f:['الجدول','الرسم البياني','جمع البيانات'],q:[{q:'كيف نعرض البيانات؟',e:['بجدول','برسم بياني','جدول','رسم بياني'],c:'أحسنت! بجدول أو رسم بياني',w:'نعرض البيانات بجدول أو رسم بياني'},{q:'الإحصاء يعني إيش؟',e:['جمع المعلومات','جمع البيانات وتنظيمها'],c:'ممتاز! جمع المعلومات وتنظيمها',w:'الإحصاء جمع المعلومات وتنظيمها'}]}
+  ],
+  // --- العلوم: 24 درساً ---
+  science:[
+    {id:'s01',t:'جسمي وأعضاؤه',n:['جسم الإنسان يتكون من: رأس، جذع، أطراف. الرأس فيه العين والأنف والفم والأذن. الجذع: الصدر والبطن. الأطراف: اليدان والرجلان.','كل عضو له وظيفة: العين للرؤية، الأنف للشم، الأذن للسمع، والفم للأكل والكلام.'],f:['الرأس: العين، الأنف، الفم، الأذن','الجذع: الصدر، البطن','الأطراف: اليدان، الرجلان'],q:[{q:'بماذا نرى؟',e:['العين','بالعين','اعين'],c:'أحسنت! بالعين',w:'نرى بالعين'},{q:'بماذا نسمع؟',e:['الأذن','بالأذن','اذن'],c:'ممتاز! بالأذن',w:'نسمع بالأذن'}]},
+    {id:'s02',t:'الحواس الخمس',n:['الحواس خمس: البصر (العين)، السمع (الأذن)، الشم (الأنف)، التذوق (اللسان)، اللمس (اليد).','العين ترى الألوان. الأذن تسمع الأصوات. الأنف يشم الروائح. اللسان يتذوق الطعم. اليد تشعر بالحرارة والبرودة.'],f:['بصر: العين','سمع: الأذن','شم: الأنف','تذوق: اللسان','لمس: اليد'],q:[{q:'كم حاسة في جسم الإنسان؟',e:["5","خمس","خمسة","٥"],c:'أحسنت! خمس حواس',w:'الحواس خمس: البصر والسمع والشم والتذوق واللمس'},{q:'بماذا نشم الروائح؟',e:["الأنف","بالأنف","انف"],c:'ممتاز! بالأنف',w:'نشم بالأنف'}]},{id:'s03',t:'العناية بالأسنان',n:['أسناننا تساعدنا على مضغ الطعام. ننظف أسناننا بالفرشاة والمعجون صباحاً ومساءً.','للسنان أنواع: القواطع للقطع، والأنياب للتمزيق، والطواحن للطحن.'],f:['نظف أسنانك مرتين يومياً','استخدم فرشاة ومعجون','زر طبيب الأسنان كل 6 أشهر'],q:[{q:'كم مرة ننظف أسناننا يومياً؟',e:["مرتين","2","٢","اثنتين"],c:'أحسنت! مرتين',w:'ننظف أسناننا مرتين يومياً'},{q:'بماذا ننظف أسناننا؟',e:["الفرشاة والمعجون","فرشاة","معجون"],c:'ممتاز! بالفرشاة والمعجون',w:'نستخدم الفرشاة والمعجون'}]},{id:'s04',t:'الغذاء الصحي',n:['الغذاء الصحي: فواكه، خضروات، حليب، لحم، خبز، سمك. الهرم الغذائي يساعدنا على اختيار الطعام الصحي.','الفواكه والخضروات تعطينا فيتامينات. الحليب يقوي العظام. الماء ضروري للحياة.'],f:['فواكه وخضروات: فيتامينات','حليب: كالسيوم للعظام','ماء: ضروري للحياة'],q:[{q:'ماذا يعطينا الحليب؟',e:["كالسيوم","قوة","عظام"],c:'أحسنت! الكالسيوم',w:'الحليب يقوي العظام'},{q:'ما الطعام الصحي؟',e:["فواكه وخضروات","فواكه","خضروات"],c:'ممتاز! الفواكه والخضروات',w:'الفواكه والخضروات طعام صحي'}]},{id:'s05',t:'الحيوانات الأليفة',n:['القط: حيوان أليف نظيف يحب الحليب واللعب. الكلب: وفي يحب صاحبه. الأرنب: لطيف يحب الجزر.','الحيوانات الأليفة تعيش معنا في البيت. نعتني بها ونطعمها.'],f:['القط: أليف، يحب الحليب','الكلب: وفي','الأرنب: لطيف'],q:[{q:'ماذا يحب القط أن يشرب؟',e:["الحليب","لبن","حليب"],c:'أحسنت! الحليب',w:'القط يحب الحليب'},{q:'الكلب صفة من صفاته؟',e:["الوفاء","وفي","مخلص"],c:'ممتاز! الوفاء',w:'الكلب وفي لصاحبه'}]},{id:'s06',t:'حيوانات المزرعة',n:['البقرة تعطينا الحليب. الدجاجة تعطينا البيض واللحم. الخروف يعطينا الصوف واللحم. الحصان نركبه.','حيوانات المزرعة تربيها لتفيدنا بالطعام واللباس.'],f:['بقرة: حليب','دجاجة: بيض','خروف: صوف ولحم','حصان: ركوب'],q:[{q:'ماذا تعطينا البقرة؟',e:["الحليب","لبن","حليب"],c:'أحسنت! الحليب',w:'البقرة تعطينا الحليب'},{q:'ماذا تعطينا الدجاجة؟',e:["البيض","بيض","لحم"],c:'ممتاز! البيض واللحم',w:'الدجاجة تعطينا البيض واللحم'}]},{id:'s07',t:'حيوانات الغابة',n:['الأسد: ملك الغابة قوي. الفيل: أكبر حيوان بري بخرطوم طويل. النمر: حيوان مفترس جميل. الزرافة: أطول الحيوانات.','الغابة موطن للعديد من الحيوانات البرية.'],f:['أسد: ملك الغابة','فيل: أكبر حيوان','نمر: مفترس','زرافة: أطول حيوان'],q:[{q:'من هو ملك الغابة؟',e:["الأسد","أسد"],c:'أحسنت! الأسد',w:'الأسد ملك الغابة'},{q:'أي حيوان له خرطوم طويل؟',e:["الفيل","فيل"],c:'ممتاز! الفيل',w:'للفيل خرطوم طويل'}]},{id:'s08',t:'حيوانات البحر',n:['السمك: يعيش في الماء. الدولفين: ثديي بحري ذكي. الحوت: أكبر حيوان في العالم. السلحفاة البحرية: تعيش في البحر.','في البحر ألوان كثيرة من الأسماك والكائنات البحرية.'],f:['سمك: يعيش في الماء','دولفين: ذكي','حوت: أكبر حيوان','سلحفاة بحرية'],q:[{q:'أين يعيش السمك؟',e:["في الماء","الماء","بحر"],c:'أحسنت! في الماء',w:'السمك يعيش في الماء'},{q:'أي حيوان بحري ذكي؟',e:["الدولفين","دولفين"],c:'ممتاز! الدولفين',w:'الدولفين حيوان بحري ذكي'}]},{id:'s09',t:'الطيور',n:['العصفور يغرد. النسر يطير عالياً. البط يسبح. الببغاء يتكلم. الديك يصحينا صباحاً.','الطيور لها أجنحة وريش. بعضها يطير وبعضها يسبح مثل البط.'],f:['عصفور: يغرد','نسر: يطير عالياً','بط: يسبح','ديك: يصحينا'],q:[{q:'بماذا يطير الطائر؟',e:["الأجنحة","أجنحة","جناحين"],c:'أحسنت! بالأجنحة',w:'الطائر يطير بأجنحته'},{q:'من يصحينا صباحاً؟',e:["الديك","ديك"],c:'ممتاز! الديك',w:'الديك يصحينا صباحاً'}]},{id:'s10',t:'الحشرات',n:['النحلة تعطينا العسل وتلقح الأزهار. الفراشة جميلة الألوان. النملة مجتهدة. الدعسوقة تفيد الزرع.','الحشرات لها ست أرجل. بعضها مفيد وبعضها ضار.'],f:['نحلة: تنتج عسلاً','فراشة: جميلة','نملة: مجتهدة','دعسوقة: مفيدة'],q:[{q:'ماذا تصنع النحلة؟',e:["العسل","عسل"],c:'أحسنت! العسل',w:'النحلة تصنع العسل'},{q:'كم رجل للنملة؟',e:["6","ست","ستة","٦"],c:'ممتاز! 6 أرجل',w:'للنملة 6 أرجل'}]},{id:'s11',t:'النباتات وأجزاؤها',n:['النبات له: جذر، ساق، أوراق، أزهار، ثمار. الجذر في التراب، الساق يحمل النبات، الأوراق تصنع الغذاء، الأزهار تنتج الثمار.','الأشجار كبيرة والنباتات صغيرة. كلها تحتاج إلى ماء وهواء وشمس.'],f:['جذر: في التراب','ساق: يحمل النبات','أوراق: تصنع الغذاء','أزهار: تنتج الثمار'],q:[{q:'بماذا تثبت النبتة في التربة؟',e:["الجذور","جذور","جذر"],c:'أحسنت! بالجذور',w:'الجذور تثبت النبتة'},{q:'ماذا يحتاج النبات لينمو؟',e:["ماء وشمس","ماء","شمس","ضوء"],c:'ممتاز! ماء وشمس',w:'النبات يحتاج ماء وشمس'}]},{id:'s12',t:'دورة حياة النبات',n:['بذرة → برعم → نبات صغير → نبات كبير → زهرة → ثمرة → بذور جديدة.','زرعنا بذرة في التراب وسقيناها، فكبرت وأصبحت زهرة جميلة.'],f:['بذرة','برعم','نبات','زهرة','ثمرة'],q:[{q:'ماذا تحتاج البذرة لتنمو؟',e:["ماء","الماء","شمس","تربة"],c:'أحسنت! الماء والتربة',w:'البذرة تحتاج ماء وتربة وشمس'},{q:'ماذا تصبح البذرة بعد النمو؟',e:["نبتة","نبات","شجرة"],c:'ممتاز! نبتة',w:'البذرة تصبح نبتة'}]},{id:'s13',t:'البذور والثمار',n:['البذور تنتج نباتات جديدة. الثمار تحوي البذور. التفاح، البرتقال، الموز، العنب، البطيخ.','نأكل الثمار فهي لذيذة ومفيدة.'],f:['تفاح','برتقال','موز','عنب'],q:[{q:'ماذا نأكل من الثمار؟',e:["فواكه","تفاح","موز","عنب"],c:'أحسنت! الفواكه',w:'نأكل الفواكه من الثمار'},{q:'من أين تأتي البذور؟',e:["من الثمار","من النبات","من الفواكه"],c:'ممتاز! من الثمار',w:'البذور تأتي من الثمار'}]},{id:'s14',t:'الطقس',n:['الطقس في الكويت: حار صيفاً، بارد شتاءً. نقيس درجة الحرارة بالترمومتر. الطقس المشمس، الغائم، الممطر، العاصف.','في الصيف حر شديد. في الشتاء برد وأمطار.'],f:['صيف: حار','شتاء: بارد','ترمومتر: يقيس الحرارة'],q:[{q:'كيف يكون الطقس في الصيف؟',e:["حار","شديد الحرارة","حرارة"],c:'أحسنت! حار',w:'الطقس حار في الصيف'},{q:'ماذا يسقط من السماء في الشتاء؟',e:["المطر","أمطار","مطر"],c:'ممتاز! المطر',w:'في الشتاء يسقط المطر'}]},{id:'s15',t:'الفصول الأربعة',n:['الربيع: زهور وأشجار. الصيف: حر وسفر. الخريف: أوراق صفراء. الشتاء: برد وأمطار.','في الربيع تزهر الأرض. في الصيف نذهب للمصايف.'],f:['ربيع: زهور','صيف: حر','خريف: أوراق صفراء','شتاء: برد'],q:[{q:'كم عدد الفصول في السنة؟',e:["4","أربعة","اربعة","٤"],c:'أحسنت! أربعة فصول',w:'في السنة أربعة فصول'},{q:'بماذا يتميز الربيع؟',e:["الأزهار","زهور","ورود"],c:'ممتاز! بالأزهار',w:'الربيع يتميز بالأزهار'}]},{id:'s16',t:'الماء',n:['الماء أساس الحياة. نشربه ونستخدمه في النظافة. الماء في الأنهار والبحار والأمطار. دورة الماء: تبخر → سحاب → أمطار.','نحافظ على الماء ولا نهدره.'],f:['الماء أساس الحياة','دورة الماء: تبخر، سحاب، أمطار','حافظ على الماء'],q:[{q:'هل الماء ضروري للحياة؟',e:["نعم","اي","ايه","طبعا"],c:'أحسنت! نعم ضروري',w:'الماء ضروري للحياة'},{q:'بماذا نغسل الملابس؟',e:["الماء والصابون","ماء","صابون"],c:'ممتاز! بالماء والصابون',w:'نغسل الملابس بالماء والصابون'}]},{id:'s17',t:'الهواء والرياح',n:['الهواء حولنا لا نراه لكن نشعر به. الرياح: هواء متحرك. الهواء ضروري للتنفس. النباتات تنظف الهواء.','نستنشق الهواء النقي. الرياح تحرك الطائرات الورقية.'],f:['الهواء لا نراه لكن نشعر به','الرياح: هواء متحرك','الهواء ضروري للتنفس'],q:[{q:'هل نرى الهواء؟',e:["لا","ما نراه"],c:'أحسنت! لا نرى الهواء',w:'الهواء لا يُرى'},{q:'ماذا تحرك الرياح؟',e:["الأشجار","أوراق","أعلام"],c:'ممتاز! تحرك الأشجار',w:'الرياح تحرك الأشجار'}]},{id:'s18',t:'التربة والصخور',n:['التربة: سطح الأرض. نزرع فيها النباتات. الصخور: أحجار صلبة. الكويت أرض صحراوية.','التربة أنواع: رملية، طينية. الصخور: صوان، رخام.'],f:['التربة نزرع فيها','الصخور أحجار صلبة','أرض الكويت صحراوية'],q:[{q:'ماذا نزرع في التربة؟',e:["النبات","نبات","زروع","بذور"],c:'أحسنت! النبات',w:'نزرع النبات في التربة'},{q:'التربة الخصبة لونها؟',e:["داكن","غامق","أسود"],c:'ممتاز! داكن',w:'التربة الخصبة لونها داكن'}]},{id:'s19',t:'الضوء والظل',n:['الضوء من الشمس والنجوم والمصابيح. الظل: عندما يحجب جسم الضوء. الشمس تشرق نهاراً وتغرب مساءً.','ظلنا يتغير طوله على مدار اليوم.'],f:['الضوء: شمس، مصابيح','الظل: يحجب الضوء','الشمس تشرق وتغرب'],q:[{q:'بماذا نشعر بحرارة الشمس؟',e:["الضوء","ضوء","الشمس"],c:'أحسنت! بالضوء',w:'نشعر بحرارة الشمس بفضل الضوء'},{q:'ماذا نرى من الظل؟',e:["الشكل","الظل","ظل"],c:'ممتاز! الظل',w:'الظل يعطينا شكل الجسم'}]},{id:'s20',t:'الكواكب والفضاء',n:['الكواكب: عطارد، الزهرة، الأرض، المريخ، المشتري، زحل، أورانوس، نبتون. الأرض هي كوكبنا. القمر يدور حول الأرض.','الشمس نجم يضيء لنا. نحن في مجرة درب التبانة.'],f:['الأرض كوكبنا','القمر يدور حول الأرض','الشمس نجم','8 كواكب في المجموعة الشمسية'],q:[{q:'أين توجد الكواكب؟',e:["في الفضاء","الفضاء","السماء"],c:'أحسنت! في الفضاء',w:'الكواكب في الفضاء'},{q:'أقرب كوكب إلى الأرض؟',e:["القمر","قمر"],c:'ممتاز! القمر',w:'القمر أقرب جرم سماوي'}]},{id:'s21',t:'الأرض والشمس والقمر',n:['الأرض تدور حول الشمس كل سنة. القمر يدور حول الأرض كل شهر. الليل والنهار من دوران الأرض.','الشمس تشرق من الشرق وتغرب من الغرب.'],f:['الأرض تدور حول الشمس','القمر يدور حول الأرض','الليل والنهار من دوران الأرض'],q:[{q:'ماذا تدور حول الأرض؟',e:["القمر","قمر"],c:'أحسنت! القمر',w:'القمر يدور حول الأرض'},{q:'ماذا يدور حول الشمس؟',e:["الأرض","الكواكب"],c:'ممتاز! الأرض',w:'الأرض تدور حول الشمس'}]},{id:'s22',t:'الطاقة',n:['الطاقة: كهرباء، شمس، رياح، وقود. الكهرباء تضيء البيوت وتشغل الأجهزة. الطاقة الشمسية من الشمس.','نوفر الطاقة بإطفاء الأنوار غير الضرورية.'],f:['كهرباء','طاقة شمسية','وفر الطاقة'],q:[{q:'من أين نحصل على الطاقة؟',e:["الطعام","الأكل","الشمس"],c:'أحسنت! من الطعام',w:'نحصل على الطاقة من الطعام'},{q:'ماذا توفر لنا الشمس؟',e:["الطاقة","ضوء","حرارة"],c:'ممتاز! الطاقة',w:'الشمس توفر لنا الطاقة'}]},{id:'s23',t:'إعادة التدوير',n:['إعادة التدوير: استخدام المواد القديمة من جديد. البلاستيك، الورق، الزجاج، المعدن نعيد تدويرها.','نفصل القمامة: بلاستيك في كيس، ورق في كيس.'],f:['بلاستيك','ورق','زجاج','معدن','نحمي البيئة بالتدوير'],q:[{q:'ماذا نصنع من إعادة التدوير؟',e:["أشياء جديدة","منتجات","ورق"],c:'أحسنت! أشياء جديدة',w:'نصنع أشياء جديدة من إعادة التدوير'},{q:'هل نقلل النفايات بإعادة التدوير؟',e:["نعم","اي","ايه","طبعا"],c:'ممتاز! نعم',w:'نعم، نقلل النفايات بإعادة التدوير'}]},{id:'s24',t:'المحافظة على البيئة',n:['نحافظ على البيئة: لا نرمي النفايات في الشارع. نزرع الأشجار. نرشد استهلاك الماء والكهرباء.','الكويت بلدنا الحبيب، نحميه من التلوث.'],f:['لا ترمي النفايات','ازرع الأشجار','رشد استهلاك الماء والكهرباء'],q:[{q:'أين نرمي النفايات؟',e:["في السلة","السلة","بالسلة","سلة المهملات"],c:'أحسنت! في السلة',w:'نرمي النفايات في السلة'},{q:'ماذا نزرع للحفاظ على البيئة؟',e:["الأشجار","شجر","نبات"],c:'ممتاز! الأشجار',w:'نزرع الأشجار للحفاظ على البيئة'}]}
+  ],
+  // --- التربية الإسلامية: 24 درساً ---
+  islamic:[
+    {id:'i01',t:'أركان الإسلام',n:['أركان الإسلام خمسة: الشهادتان، الصلاة، الزكاة، الصوم، الحج. الشهادتان: أشهد أن لا إله إلا الله وأشهد أن محمداً رسول الله.','الصلاة خمس صلوات في اليوم. الزكاة نعطي الفقراء. الصوم في رمضان. الحج إلى مكة.'],f:['الشهادتان','الصلاة','الزكاة','الصوم','الحج'],q:[{q:'كم ركن من أركان الإسلام؟',e:['خمسة','5','٥'],c:'أحسنت! خمسة أركان',w:'أركان الإسلام خمسة'},{q:'ما الركن الأول من الإسلام؟',e:['الشهادتان','الشهادة'],c:'ممتاز! الشهادتان',w:'أول ركن هو الشهادتان'}]},
+    {id:'i02',t:'أركان الإيمان',n:['أركان الإيمان ستة: الإيمان بالله، الملائكة، الكتب، الرسل، اليوم الآخر، والقدر خيره وشره.','نؤمن بأن الله واحد لا شريك له، وبجميع الأنبياء والرسل.'],f:['الله','الملائكة','الكتب','الرسل','اليوم الآخر','القدر'],q:[{q:'كم ركن من أركان الإيمان؟',e:['ستة','6','٦'],c:'أحسنت! ستة أركان',w:'أركان الإيمان ستة'},{q:'بكم نؤمن في أركان الإيمان؟',e:['بالله','الله','واحد'],c:'ممتاز! نؤمن بالله',w:'أول ركن الإيمان بالله'}]},
+    {id:'i03',t:'سورة الفاتحة',n:['سورة الفاتحة أعظم سورة في القرآن. نقرؤها في كل صلاة. عدد آياتها 7 آيات.','تبدأ ب "بسم الله الرحمن الرحيم" وتنتهي ب "صراط الذين أنعمت عليهم".'],f:['أعظم سورة في القرآن','7 آيات','نقرؤها في كل صلاة'],q:[{q:'كم عدد آيات سورة الفاتحة؟',e:['7','سبع','٧','سبعة'],c:'أحسنت! 7 آيات',w:'الفاتحة 7 آيات'},{q:'هل نقرأ الفاتحة في الصلاة؟',e:['نعم','اي','ايه'],c:'ممتاز! نقرؤها في كل صلاة',w:'نعم، نقرأ الفاتحة في كل صلاة'}]},
+    {id:'i04',t:'سورة الإخلاص',n:['سورة الإخلاص: "قل هو الله أحد، الله الصمد، لم يلد ولم يولد، ولم يكن له كفواً أحد".','تساوي ثلث القرآن. تتحدث عن توحيد الله.'],f:['4 آيات','تساوي ثلث القرآن','توحيد الله'],q:[{q:'بكم سورة الإخلاص تساوي القرآن؟',e:['ثلث','ثلث القرآن'],c:'أحسنت! تساوي ثلث القرآن',w:'تساوي ثلث القرآن'},{q:'عن ماذا تتحدث سورة الإخلاص؟',e:['توحيد الله','الله أحد','التوحيد'],c:'ممتاز! عن توحيد الله',w:'تتحدث عن توحيد الله'}]},
+    {id:'i05',t:'سورة الفلق',n:['سورة الفلق: "قل أعوذ برب الفلق، من شر ما خلق، ومن شر غاسق إذا وقب، ومن شر النفاثات في العقد، ومن شر حاسد إذا حسد".','نقرؤها للتحصين قبل النوم.'],f:['5 آيات','للتحصين من الشرور'],q:[{q:'كم عدد آيات سورة الفلق؟',e:['5','خمس','٥','خمسة'],c:'أحسنت! 5 آيات',w:'الفلق 5 آيات'},{q:'متى نقرأ سورة الفلق؟',e:['قبل النوم','للتحصين','بالليل'],c:'ممتاز! للتحصين قبل النوم',w:'نقرؤها للتحصين قبل النوم'}]},
+    {id:'i06',t:'سورة الناس',n:['سورة الناس: "قل أعوذ برب الناس، ملك الناس، إله الناس، من شر الوسواس الخناس، الذي يوسوس في صدور الناس، من الجنة والناس".','آخر سورة في القرآن. نقرؤها مع الفلق والمعوذات.'],f:['آخر سورة في القرآن','6 آيات','للتحصين من الوسوسة'],q:[{q:'كم عدد آيات سورة الناس؟',e:['6','ست','٦','ستة'],c:'أحسنت! 6 آيات',w:'الناس 6 آيات'},{q:'سورة الناس آخر سورة في ماذا؟',e:['القرآن','القران'],c:'ممتاز! آخر سورة في القرآن',w:'آخر سورة في القرآن'}]},
+    {id:'i07',t:'الوضوء',n:['الوضوء: نبدأ ببسم الله. نغسل الكفين 3 مرات، ثم المضمضة والاستنشاق 3 مرات، ثم غسل الوجه 3 مرات، ثم اليدين إلى المرفقين 3 مرات، ثم مسح الرأس والأذنين، ثم غسل الرجلين إلى الكعبين 3 مرات.','الوضوء شرط لصحة الصلاة.'],f:['غسل الكفين','المضمضة والاستنشاق','غسل الوجه','غسل اليدين','مسح الرأس','غسل الرجلين'],q:[{q:'بماذا نبدأ الوضوء؟',e:['بسم الله','باسم الله','البسملة'],c:'أحسنت! بسم الله',w:'نبدأ بقول بسم الله'},{q:'هل تصح الصلاة بدون وضوء؟',e:['لا','ما تصح','لا تصح'],c:'ممتاز! الوضوء شرط للصلاة',w:'الوضوء شرط لصحة الصلاة'}]},
+    {id:'i08',t:'الصلاة',n:['الصلاة خمس صلوات: الفجر ركعتان، الظهر 4 ركعات، العصر 4 ركعات، المغرب 3 ركعات، العشاء 4 ركعات.','الصلاة عمود الدين. أول ما يحاسب عليه العبد يوم القيامة الصلاة.'],f:['الفجر: ركعتان','الظهر: 4 ركعات','العصر: 4 ركعات','المغرب: 3 ركعات','العشاء: 4 ركعات'],q:[{q:'كم صلاة في اليوم؟',e:['5','خمس','٥','خمسة'],c:'أحسنت! خمس صلوات',w:'نصلي خمس صلوات في اليوم'},{q:'كم ركعة في صلاة الفجر؟',e:['2','اثنتان','ركعتان','٢'],c:'ممتاز! ركعتان',w:'الفجر ركعتان'}]},
+    {id:'i09',t:'سورة الكوثر',n:['سورة الكوثر: "إنا أعطيناك الكوثر، فصل لربك وانحر، إن شانئك هو الأبتر".','أقصر سورة في القرآن، 3 آيات. نزلت تطييباً لقلب النبي.'],f:['3 آيات','أقصر سورة في القرآن','الكوثر: نهر في الجنة'],q:[{q:'كم عدد آيات سورة الكوثر؟',e:['3','ثلاث','٣','ثلاثة'],c:'أحسنت! 3 آيات',w:'الكوثر 3 آيات'},{q:'ما الكوثر؟',e:['نهر في الجنة','نهر الجنة','نهر'],c:'ممتاز! نهر في الجنة',w:'الكوثر نهر في الجنة'}]},
+    {id:'i10',t:'سورة العصر',n:['سورة العصر: "والعصر، إن الإنسان لفي خسر، إلا الذين آمنوا وعملوا الصالحات وتواصوا بالحق وتواصوا بالصبر".','سورة عظيمة تذكرنا بأهمية الوقت والعمل الصالح.'],f:['3 آيات','قيمة الوقت','الإيمان والعمل الصالح'],q:[{q:'كم عدد آيات سورة العصر؟',e:['3','ثلاث','٣','ثلاثة'],c:'أحسنت! 3 آيات',w:'العصر 3 آيات'},{q:'على ماذا تذكرنا سورة العصر؟',e:['العمل الصالح','قيمة الوقت','الوقت'],c:'ممتاز! على قيمة الوقت والعمل الصالح',w:'تذكرنا بأهمية الوقت والعمل الصالح'}]},
+    {id:'i11',t:'سورة النصر',n:['سورة النصر: "إذا جاء نصر الله والفتح، ورأيت الناس يدخلون في دين الله أفواجاً، فسبح بحمد ربك واستغفره إنه كان تواباً".','نزلت في فتح مكة. تبشر بنصر الله.'],f:['3 آيات','فتح مكة','نصر الله والفتح'],q:[{q:'كم عدد آيات سورة النصر؟',e:['3','ثلاث','٣','ثلاثة'],c:'أحسنت! 3 آيات',w:'النصر 3 آيات'},{q:'بماذا تبشر سورة النصر؟',e:['نصر الله','الفتح','فتح مكة'],c:'ممتاز! بنصر الله والفتح',w:'تبشر بنصر الله والفتح'}]},
+    {id:'i12',t:'الصدق',n:['الصدق: قول الحق. الصدق يهدي إلى البر والبر يهدي إلى الجنة. الكذب يهدي إلى الفجور والفجور يهدي إلى النار.','كان النبي ﷺ صادقاً أميناً. الصادق يكون محبوباً من الله والناس.'],f:['الصدق يهدي إلى الجنة','الكذب يهدي إلى النار','النبي ﷺ صادق أمين'],q:[{q:'الصدق يهدي إلى ماذا؟',e:['الجنة','الخير','البر'],c:'أحسنت! الصدق يهدي إلى الجنة',w:'الصدق يهدي إلى الجنة'},{q:'هل كان النبي ﷺ صادقاً؟',e:['نعم','اي','صادق','امين'],c:'ممتاز! النبي ﷺ صادق أمين',w:'نعم، كان النبي صادقاً أميناً'}]},
+    {id:'i13',t:'الأمانة',n:['الأمانة: رد ما استؤمنت عليه. المؤمن القوي أمين. الأمانة صفة الأنبياء.','إذا ائتمنك أحد على شيء، فرده إليه كاملاً.'],f:['الأمانة: رد ما استؤمنت عليه','صفة الأنبياء','المؤمن أمين'],q:[{q:'هل الأمانة صفة الأنبياء؟',e:['نعم','اي','ايه','صفة'],c:'أحسنت! الأمانة صفة الأنبياء',w:'نعم، الأمانة صفة الأنبياء'},{q:'ماذا تفعل إذا ائتمنك أحد على شيء؟',e:['رده','ترده','أرده'],c:'ممتاز! ترده إليه',w:'ترد الأمانة لصاحبها'}]},
+    {id:'i14',t:'بر الوالدين',n:['بر الوالدين: طاعتهما والإحسان إليهما. الجنة تحت أقدام الأمهات. والدعاء: "رب ارحمهما كما ربياني صغيراً".','نحن نطيع والدينا ونحترمهما ونساعدهما.'],f:['بر الوالدين: طاعة وإحسان','الجنة تحت أقدام الأمهات','دعاء: رب ارحمهما'],q:[{q:'أين الجنة؟',e:['تحت أقدام الأمهات','تحت اقدام الامهات','تحت اقدام امهاتنا'],c:'أحسنت! الجنة تحت أقدام الأمهات',w:'الجنة تحت أقدام الأمهات'},{q:'هل نطيع والدينا؟',e:['نعم','اي','ايه','طبعا'],c:'ممتاز! نطيع والدينا',w:'نعم، نطيع والدينا ونحترمهما'}]},
+    {id:'i15',t:'النظافة من الإيمان',n:['النظافة من الإيمان. الإسلام دين النظافة. نغسل أيدينا قبل الأكل وبعده. نتنظف بعد قضاء الحاجة. نستاك بعد الاستيقاظ.','النظافة تشمل نظافة البدن والثوب والمكان.'],f:['النظافة من الإيمان','غسل اليدين','السواك','نظافة البدن والثوب'],q:[{q:'النظافة من ماذا؟',e:['الإيمان','الايمان','الدين'],c:'أحسنت! النظافة من الإيمان',w:'النظافة من الإيمان'},{q:'متى نغسل أيدينا؟',e:['قبل الأكل وبعده','قبل الاكل وبعده','قبل الاكل'],c:'ممتاز! قبل الأكل وبعده',w:'نغسل أيدينا قبل الأكل وبعده'}]},
+    {id:'i16',t:'الرحمة والتعاون',n:['الرحمة: نرحم الناس والحيوانات. التعاون: نتعاون مع الآخرين كما قال الله "وتعاونوا على البر والتقوى".','من رحم الصغير ورجل الكبير فهو منا. التعاون طريق النجاح.'],f:['الرحمة بالصغير والكبير','التعاون على البر والتقوى','التعاون طريق النجاح'],q:[{q:'التعاون طريق ماذا؟',e:['النجاح','للنجاح'],c:'أحسنت! التعاون طريق النجاح',w:'التعاون طريق النجاح'},{q:'هل نرحم الحيوانات؟',e:['نعم','اي','ايه','طبعا'],c:'ممتاز! نرحم الحيوانات',w:'نعم، نرحم الحيوانات'}]},
+    {id:'i17',t:'قصة آدم عليه السلام',n:['آدم أول الخلق وأول الأنبياء. خلقه الله من طين. أسكنه الجنة مع حواء. الشيطان وسوس لهما فأكلا من الشجرة. تاب الله عليهما ونزلا إلى الأرض.','آدم أبو البشر. خلقه الله بيده ونفخ فيه من روحه.'],f:['أول الخلق وأول الأنبياء','خلق من طين','أبو البشر'],q:[{q:'من ماذا خلق الله آدم؟',e:['طين','من طين'],c:'أحسنت! خلق آدم من طين',w:'خلق الله آدم من طين'},{q:'من هو أبو البشر؟',e:['آدم','ادم'],c:'ممتاز! آدم أبو البشر',w:'آدم عليه السلام أبو البشر'}]},
+    {id:'i18',t:'قصة نوح عليه السلام',n:['نوح عليه السلام دعا قومه 950 سنة فلم يؤمن إلا قليل. أمره الله ببناء السفينة. حمل فيها من كل زوجين اثنين والمؤمنين. الطوفان أغرق الكافرين.','نوح أول رسول أرسله الله إلى الأرض.'],f:['950 سنة دعوة','بناء السفينة','الطوفان'],q:[{q:'بماذا أمر الله نوحاً أن يبني؟',e:['سفينة','السفينة'],c:'أحسنت! ببناء السفينة',w:'أمره الله ببناء السفينة'},{q:'من هو أول رسول؟',e:['نوح','نوح عليه السلام'],c:'ممتاز! نوح أول رسول',w:'نوح عليه السلام أول رسول'}]},
+    {id:'i19',t:'قصة إبراهيم عليه السلام',n:['إبراهيم عليه السلام خليل الله. كسر الأصنام في قومه. ألقوه في النار فكانت برداً وسلاماً. بنى الكعبة مع إسماعيل. أمره الله بذبح ابنه ففداه بكبش عظيم.','إبراهيم أبو الأنبياء.'],f:['خليل الله','كسر الأصنام','النار برد وسلام','بنى الكعبة','فداء إسماعيل بكبش'],q:[{q:'لماذا يلقب إبراهيم؟',e:['خليل الله','خليل'],c:'أحسنت! خليل الله',w:'إبراهيم خليل الله'},{q:'ماذا بنى إبراهيم مع إسماعيل؟',e:['الكعبة','الكعبة المشرفة','بيت الله'],c:'ممتاز! بنى الكعبة',w:'بنى الكعبة مع إسماعيل'}]},
+    {id:'i20',t:'قصة موسى عليه السلام',n:['موسى عليه السلام أرسله الله إلى فرعون. فرعون ادعى الألوهية. أيد الله موسى بمعجزات: العصا تنقلب ثعباناً، واليد البيضاء. أغرقه الله في البحر وأنجى موسى وبني إسرائيل.','موسى كليم الله.'],f:['كليم الله','أرسل إلى فرعون','العصا واليد البيضاء','انشقاق البحر'],q:[{q:'بماذا أيد الله موسى؟',e:['عصا','العصا','معجزات'],c:'أحسنت! بالعصا واليد البيضاء',w:'أيده الله بالعصا واليد البيضاء'},{q:'من هو كليم الله؟',e:['موسى','موسى عليه السلام'],c:'ممتاز! موسى كليم الله',w:'موسى عليه السلام كليم الله'}]},
+    {id:'i21',t:'قصة محمد ﷺ',n:['محمد ﷺ خاتم الأنبياء. ولد في مكة عام الفيل. نزل عليه القرآن في غار حراء. هاجر إلى المدينة. فتح مكة. توفي عن 63 سنة.','محمد ﷺ قدوتنا. بعث بالهدى والدين الحق.'],f:['خاتم الأنبياء','نزل عليه القرآن','الهجرة إلى المدينة','فتح مكة'],q:[{q:'أين ولد النبي محمد ﷺ؟',e:['مكة','مكة المكرمة'],c:'أحسنت! ولد في مكة',w:'ولد النبي في مكة'},{q:'من هو خاتم الأنبياء؟',e:['محمد','محمد ﷺ','النبي محمد'],c:'ممتاز! محمد ﷺ خاتم الأنبياء',w:'محمد ﷺ خاتم الأنبياء'}]},
+    {id:'i22',t:'الأذكار اليومية',n:['أذكار الصباح: "اللهم بك أصبحنا وبك أمسينا". أذكار المساء: "اللهم بك أمسينا وبك أصبحنا". أذكار النوم: "باسمك اللهم أموت وأحيا".','الأذكار تحفظنا بإذن الله.'],f:['أذكار الصباح','أذكار المساء','أذكار النوم','الأذكار تحفظنا'],q:[{q:'متى نقول أذكار الصباح؟',e:['الصباح','بالصباح','الصبح'],c:'أحسنت! في الصباح',w:'نقولها في الصباح'},{q:'ماذا تحفظنا الأذكار؟',e:['تحفظنا','تحفظنا بإذن الله'],c:'ممتاز! تحفظنا بإذن الله',w:'الأذكار تحفظنا بإذن الله'}]},
+    {id:'i23',t:'آداب الطعام',n:['قبل الأكل: بسم الله. نأكل باليمين. لا نأكل من وسط الصحفة. نحمد الله بعد الأكل. لا نكثر في الأكل.','الآداب: غسل اليدين قبل وبعد، الأكل باليمين، قول بسم الله.'],f:['بسم الله قبل الأكل','الأكل باليمين','الحمد لله بعد الأكل'],q:[{q:'بماذا نبدأ قبل الأكل؟',e:['بسم الله','باسم الله'],c:'أحسنت! بسم الله',w:'نقول بسم الله قبل الأكل'},{q:'بأي يد نأكل؟',e:['اليمين','يمين','اليّمن'],c:'ممتاز! باليمين',w:'نأكل باليد اليمنى'}]},
+    {id:'i24',t:'آداب السلام والاستئذان',n:['السلام: "السلام عليكم ورحمة الله وبركاته". الرد: "وعليكم السلام ورحمة الله وبركاته". الاستئذان: نستأذن قبل دخول غرفة الوالدين.','السلام سنة والرد واجب. الاستئذان ثلاث مرات.'],f:['السلام: السلام عليكم','الرد: وعليكم السلام','الاستئذان ثلاثاً'],q:[{q:'كيف نلقي السلام؟',e:['السلام عليكم','السلام عليكم ورحمة الله وبركاته'],c:'أحسنت! السلام عليكم',w:'نقول السلام عليكم'},{q:'كم مرة نستأذن؟',e:['ثلاث','3','٣','ثلاثة'],c:'ممتاز! ثلاث مرات',w:'الاستئذان ثلاث مرات'}]}
+  ],
+  // --- التربية الوطنية الكويتية: 20 درساً ---
+  national:[
+    {id:'n01',t:'الكويت بلدي',n:['الكويت بلدي الحبيب. الكويت دولة صغيرة لكنها غنية. تقع في شمال شرق شبه الجزيرة العربية على الخليج العربي. عاصمتها مدينة الكويت.','الكويت اسم من "كوت" يعني الحصن. أسسها آل صباح. سكانها كويتيون مضيافون.'],f:['الكويت بلدي الحبيب','العاصمة: مدينة الكويت','تقع على الخليج العربي'],q:[{q:'ما عاصمة الكويت؟',e:['مدينة الكويت','الكويت'],c:'أحسنت! مدينة الكويت',w:'عاصمة الكويت هي مدينة الكويت'},{q:'على ماذا تطل الكويت؟',e:['الخليج العربي','الخليج','بحر'],c:'ممتاز! على الخليج العربي',w:'الكويت على الخليج العربي'}]},
+    {id:'n02',t:'علم الكويت',n:['علم الكويت: أربعة ألوان. الأحمر، الأخضر، الأبيض، الأسود. شعار الكويت: الصقر، السفينة، العلم.','العلم رمز الوطن. نرفعه في الأعياد الوطنية. النشيد الوطني: "وطني الكويت سلمت للمجد".'],f:['الأحمر، الأخضر، الأبيض، الأسود','الشعار: الصقر والسفينة','النشيد: وطني الكويت'],q:[{q:'كم لون في علم الكويت؟',e:['4','أربعة','٤','اربعة'],c:'أحسنت! أربعة ألوان',w:'العلم له أربعة ألوان'},{q:'ماذا في شعار الكويت؟',e:['الصقر والسفينة','صقر وسفينة'],c:'ممتاز! الصقر والسفينة',w:'شعار الكويت الصقر والسفينة'}]},
+    {id:'n03',t:'أمير الكويت',n:['أمير الكويت هو رئيس الدولة. الكويت إمارة وراثية في آل صباح. الأمير الحالي: الشيخ مشعل الأحمد الجابر الصباح.','نحب أميرنا ونحترمه. ندعو له بالتوفيق.'],f:['الأمير: رئيس الدولة','آل صباح الأسرة الحاكمة','الأمير مشعل الأحمد'],q:[{q:'من هو أمير الكويت الحالي؟',e:['مشعل الأحمد','الشيخ مشعل','مشعل'],c:'أحسنت! الشيخ مشعل الأحمد',w:'أمير الكويت مشعل الأحمد الصباح'},{q:'الأسرة الحاكمة في الكويت من هم؟',e:['آل صباح','الصباح'],c:'ممتاز! آل صباح',w:'آل صباح الأسرة الحاكمة'}]},
+    {id:'n04',t:'جغرافية الكويت',n:['الكويت في شمال شرق شبه الجزيرة العربية. حدودها: العراق شمالاً وغرباً، السعودية جنوباً، الخليج العربي شرقاً.','أرض الكويت صحراوية مسطحة. جزرها: بوبيان، فيلكا، كبر، عوهة، أم المرادم.'],f:['العراق شمالاً وغرباً','السعودية جنوباً','الخليج شرقاً','جزر: بوبيان، فيلكا'],q:[{q:'من أي جهة تقع السعودية من الكويت؟',e:['جنوب','الجنوب','جنوباً'],c:'أحسنت! جنوباً',w:'السعودية جنوب الكويت'},{q:'من أي جهة تقع العراق من الكويت؟',e:['شمال','شمالاً','شمال وغرب'],c:'ممتاز! شمالاً وغرباً',w:'العراق شمال وغرب الكويت'}]},
+    {id:'n05',t:'معالم الكويت',n:['أبراج الكويت: رمز الكويت الحديثة. المسجد الكبير: أكبر مسجد في الكويت. سوق المباركية: سوق قديم تراثي. منطقة الكويت الثقافية.','الجزيرة الخضراء، قصر دسمان، قصر بيان من معالم الكويت.'],f:['أبراج الكويت','المسجد الكبير','سوق المباركية'],q:[{q:'ما أشهر معلم في الكويت؟',e:['أبراج الكويت','الابراج'],c:'أحسنت! أبراج الكويت',w:'أبراج الكويت أشهر معلم'},{q:'ما اسم أكبر مسجد في الكويت؟',e:['المسجد الكبير','المسجد'],c:'ممتاز! المسجد الكبير',w:'المسجد الكبير أكبر مسجد'}]},
+    {id:'n06',t:'اقتصاد الكويت ومواردها',n:['الكويت غنية بالنفط. اكتشف النفط عام 1938. الكويت عضو في أوبك. الدينار الكويتي أغلى عملة في العالم.','النفط هو المصدر الرئيسي لدخل الكويت. الكويت تستثمر في البتروكيماويات.'],f:['النفط: أهم مورد','اكتشاف النفط 1938','عضو في أوبك'],q:[{q:'بماذا تشتهر الكويت؟',e:['النفط','البترول'],c:'أحسنت! بالنفط',w:'الكويت غنية بالنفط'},{q:'ما أغلى عملة في العالم؟',e:['الدينار الكويتي','الدينار'],c:'ممتاز! الدينار الكويتي',w:'الدينار الكويتي أغلى عملة'}]},
+    {id:'n07',t:'دستور الكويت وحكومتها',n:['دستور الكويت صدر عام 1962. نظام الحكم: أميري دستوري. السلطات: التشريعية (مجلس الأمة)، التنفيذية (مجلس الوزراء)، القضائية (المحاكم).','الكويت دولة ديمقراطية. مجلس الأمة يمثل الشعب.'],f:['الدستور 1962','أميري دستوري','مجلس الأمة','مجلس الوزراء'],q:[{q:'متى صدر دستور الكويت؟',e:['1962','١٩٦٢'],c:'أحسنت! 1962',w:'الدستور صدر عام 1962'},{q:'ماذا يمثل مجلس الأمة؟',e:['الشعب','الناس'],c:'ممتاز! يمثل الشعب',w:'مجلس الأمة يمثل الشعب'}]},
+    {id:'n08',t:'العيد الوطني الكويتي',n:['العيد الوطني: 25 فبراير. عيد التحرير: 26 فبراير. نحتفل باستقلال الكويت عام 1961.','في العيد الوطني نزين الشوارع ونرفع العلم.'],f:['25 فبراير: العيد الوطني','26 فبراير: عيد التحرير','1961: عام الاستقلال'],q:[{q:'متى العيد الوطني للكويت؟',e:['25 فبراير','٢٥ فبراير','25'],c:'أحسنت! 25 فبراير',w:'العيد الوطني 25 فبراير'},{q:'متى عيد التحرير؟',e:['26 فبراير','٢٦ فبراير','26'],c:'ممتاز! 26 فبراير',w:'عيد التحرير 26 فبراير'}]},
+    {id:'n09',t:'الأسرة في الكويت',n:['الأسرة نواة المجتمع الكويتي. الأسرة الكويتية متماسكة. الأب يعمل والأم ترعى البيت. نكرم الوالدين ونحترم الكبير.','الكويتيون يهتمون بصلة الرحم وزيارة الأقارب.'],f:['الأسرة نواة المجتمع','تكريم الوالدين','صلة الرحم'],q:[{q:'ما نواة المجتمع الكويتي؟',e:['الأسرة','العائلة'],c:'أحسنت! الأسرة',w:'الأسرة نواة المجتمع'},{q:'بماذا يهتم الكويتيون؟',e:['صلة الرحم','زيارة الأقارب','الاقارب'],c:'ممتاز! بصلة الرحم',w:'يهتمون بصلة الرحم وزيارة الأقارب'}]},
+    {id:'n10',t:'العادات والتقاليد الكويتية',n:['الكرم: الكويتيون كرماء مع الضيف. القهوة العربية: تقدم مع التمر. الديوانية: مجلس الرجال. العيدية: للأطفال في العيد.','الأكلات الكويتية: المطبخ الكويتي، المجبوس، المرقوق.'],f:['كرم الضيافة','القهوة العربية','الديوانية','العيدية'],q:[{q:'بماذا يشتهر الكويتيون مع الضيف؟',e:['الكرم','كرم الضيافة'],c:'أحسنت! الكرم',w:'الكويتيون كرماء'},{q:'ماذا يقدم مع القهوة العربية؟',e:['التمر','تمر'],c:'ممتاز! التمر',w:'تقدم القهوة مع التمر'}]},
+    {id:'n11',t:'الزي الكويتي',n:['الرجال: الدشداشة البيضاء، الغترة بيضاء أو شماغ أحمر، العقال. النساء: الدراعة الكويتية المطرزة، العباءة السوداء، الشيلة.','الزي الكويتي يعكس الهوية والثقافة الكويتية.'],f:['الدشداشة والغترة والعقال','الدراعة والعباءة'],q:[{q:'ماذا يرتدي الرجال في الكويت؟',e:['الدشداشة','دشداشة','غترة'],c:'أحسنت! الدشداشة والغترة',w:'يرتدون الدشداشة والغترة'},{q:'ماذا ترتدي النساء في الكويت؟',e:['الدراعة','دراعة','العباءة'],c:'ممتاز! الدراعة والعباءة',w:'ترتدي النساء الدراعة والعباءة'}]},
+    {id:'n12',t:'المهن في الكويت',n:['المهن قديماً: الغوص على اللؤلؤ، الصيد، التجارة، البناء. المهن حديثاً: طبيب، مهندس، معلم، طيار.','الكويتيون عملوا في الغوص والتجارة قديماً. اليوم يعملون في جميع المجالات.'],f:['قديماً: غوص، صيد، تجارة','حديثاً: طب، هندسة، تعليم'],q:[{q:'بماذا كان الكويتيون يعملون قديماً؟',e:['الغوص','غوص','صيد','تجارة'],c:'أحسنت! الغوص والصيد',w:'كانوا يعملون في الغوص والصيد'},{q:'ماذا يسمى الغوص على اللؤلؤ؟',e:['الغوص','غوص اللؤلؤ'],c:'ممتاز! الغوص على اللؤلؤ',w:'الغوص على اللؤلؤ مهنة قديمة'}]},
+    {id:'n13',t:'المواصلات في الكويت',n:['السيارة: وسيلة النقل الرئيسية. المطار: مطار الكويت الدولي. الميناء: ميناء الشويخ وميناء الأحمدي.','الطرق الحديثة تربط مناطق الكويت. جسر الشيخ جابر يربط الكويت بصبيهان.'],f:['مطار الكويت الدولي','ميناء الشويخ والأحمدي','جسر الشيخ جابر'],q:[{q:'ما وسيلة النقل الرئيسية في الكويت؟',e:['السيارة','سيارة','السياارة'],c:'أحسنت! السيارة',w:'السيارة وسيلة النقل الرئيسية'},{q:'ما اسم المطار في الكويت؟',e:['مطار الكويت الدولي','مطار الكويت','المطار'],c:'ممتاز! مطار الكويت الدولي',w:'مطار الكويت الدولي'}]},
+    {id:'n14',t:'المدرسة والتعليم في الكويت',n:['التعليم مجاني في الكويت من الابتدائي حتى الجامعة. المدارس: حكومية وخاصة. جامعة الكويت أول جامعة في الكويت.','التعليم حق لكل كويتي. نذهب للمدرسة صباحاً. الدراسة 12 سنة.'],f:['التعليم مجاني','جامعة الكويت','12 سنة دراسية'],q:[{q:'هل التعليم في الكويت مجاني؟',e:['نعم','اي','ايه','مجاني'],c:'أحسنت! التعليم مجاني',w:'نعم، التعليم مجاني في الكويت'},{q:'ما أول جامعة في الكويت؟',e:['جامعة الكويت'],c:'ممتاز! جامعة الكويت',w:'جامعة الكويت أول جامعة'}]},
+    {id:'n15',t:'النظام والانضباط',n:['النظام في الشارع: إشارات المرور، عبور المشاة. النظام في المدرسة: الطابور، الحصص، النظام في الفصل.','النظام والانضباط يحققان الأمان. النظام من حب الوطن.'],f:['النظام في الشارع','النظام في المدرسة','النظام من حب الوطن'],q:[{q:'ماذا يحقق النظام والانضباط؟',e:['الأمان','الامان'],c:'أحسنت! يحققان الأمان',w:'النظام والانضباط يحققان الأمان'},{q:'هل النظام من حب الوطن؟',e:['نعم','اي','ايه'],c:'ممتاز! النظام من حب الوطن',w:'نعم، النظام من حب الوطن'}]},
+    {id:'n16',t:'الأعياد والمناسبات',n:['في الكويت نحتفل بالأعياد: عيد الفطر، عيد الأضحى، العيد الوطني، عيد التحرير. نزور الأقارب ونتبادل التهاني والهدايا.','في العيد نلبس الجديد ونأكل الحلويات.'],f:['عيد الفطر والأضحى','العيد الوطني والتحرير','التهاني والهدايا'],q:[{q:'كم عيد نحتفل به في الكويت؟',e:['أربعة','4','٤','اربعة'],c:'أحسنت! أربعة أعياد',w:'نحتفل بأربعة أعياد'},{q:'ماذا نفعل في العيد؟',e:['نزور الأقارب','نزور الاقارب','نلبس الجديد'],c:'ممتاز! نزور الأقارب ونلبس الجديد',w:'نزور الأقارب ونلبس الجديد'}]},
+    {id:'n17',t:'المحافظة على الممتلكات العامة',n:['الممتلكات العامة: الحدائق، المدارس، المساجد، الشوارع. نحافظ عليها ونحميها. لا نكتب على الجدران.','الممتلكات العامة ملك الجميع. المحافظة عليها واجب وطني.'],f:['الممتلكات العامة ملك الجميع','لا نكتب على الجدران','المحافظة عليها واجب'],q:[{q:'هل نكتب على الجدران؟',e:['لا','ممنوع','لا نكتب'],c:'أحسنت! لا نكتب على الجدران',w:'لا، لا نكتب على الجدران'},{q:'على من نحافظ على الممتلكات العامة؟',e:['الجميع','كل الناس','الكل'],c:'ممتاز! ملك الجميع',w:'الممتلكات العامة ملك الجميع'}]},
+    {id:'n18',t:'المسؤولية',n:['المسؤولية: كل واحد مسؤول عن أعماله. في البيت: أرتب غرفتي. في المدرسة: أحترم معلمي. في الشارع: ألتزم بالقوانين.','المسؤولية تجعلنا مواطنين صالحين.'],f:['في البيت: الترتيب','في المدرسة: الاحترام','في الشارع: الالتزام'],q:[{q:'ماذا تفعل في البيت؟',e:['أرتب غرفتي','ارتب غرفتي','الترتيب'],c:'أحسنت! ترتب غرفتك',w:'ترتب غرفتك في البيت'},{q:'ماذا تفعل في المدرسة؟',e:['أحترم معلمي','احترم معلمي','احترام'],c:'ممتاز! تحترم معلمك',w:'تحترم معلمك في المدرسة'}]},
+    {id:'n19',t:'التسامح في المجتمع الكويتي',n:['الكويت بلد التسامح والتعايش. كل الجنسيات تعيش معاً في أمان. الكويت تحتضن الجاليات العربية والأجنبية.','التسامح: نتقبل الآخر ولو كان مختلفاً عنا.'],f:['الكويت: بلد التسامح','التعايش بين الجنسيات','احترام الآخر'],q:[{q:'بماذا توصف الكويت؟',e:['بلد التسامح','بلد التسامح والتعايش'],c:'أحسنت! بلد التسامح',w:'الكويت بلد التسامح'},{q:'هل تعيش الجنسيات المختلفة في الكويت بأمان؟',e:['نعم','اي','ايه','طبعا'],c:'ممتاز! نعم، بأمان',w:'نعم، كل الجنسيات تعيش بأمان'}]},
+    {id:'n20',t:'المواطن الصالح',n:['المواطن الصالح: يحب وطنه، يلتزم بالقوانين، يحترم الآخرين، يحافظ على الممتلكات، يشارك في بناء المجتمع.','المواطنة: حقوق وواجبات. الحق في التعليم والصحة. الواجب: خدمة الوطن.'],f:['حب الوطن','احترام القوانين','المشاركة في البناء','الحقوق والواجبات'],q:[{q:'هل المواطن الصالح يحب وطنه؟',e:['نعم','اي','ايه','طبعا'],c:'أحسنت! نعم يحب وطنه',w:'المواطن الصالح يحب وطنه'},{q:'ماذا يفعل المواطن الصالح؟',e:['يلتزم بالقوانين','يحترم الآخرين','يحافظ على الممتلكات'],c:'ممتاز! يلتزم بالقوانين ويحترم الآخرين',w:'المواطن الصالح يلتزم بالقوانين ويحترم الآخرين'}]}
+  ]
+};
+// ═══ WebGL الكرة البلورية ═══
+const ORB={
+  gl:null,prog:null,bufs:{},loc:{},time:0,state:'idle',run:1,
+  COL:{speaking:[0,168,84],listening:[59,130,246],idle:[100,160,255]},
+  // 🔥 AnalyserNode للميكروفون
+  micStream:null,analyser:null,freqData:null,
+  init(cvs){
+    try{
+      this.gl=cvs.getContext('webgl',{alpha:1,antialias:1})||cvs.getContext('experimental-webgl')
+      if(!this.gl)return;this._res(cvs);this._gen(2.3,52,38);this._sh();this._buf()
+      window.addEventListener('resize',()=>this._res(cvs));this._loop()
+    }catch(e){console.warn('ORB init failed:',e);this.run=0}
+  },
+  _res(c){if(!c)return;const dpr=window.devicePixelRatio||1,sz=280;c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+'px';c.style.height=sz+'px';if(this.gl)this.gl.viewport(0,0,sz*dpr,sz*dpr)},
+  _gen(r,ws,hs){this.vtx=[];this.idx=[];this.nrm=[];
+    for(let y=0;y<=hs;y++)for(let x=0;x<=ws;x++){const u=x/ws,v=y/hs,th=u*Math.PI*2,ph=v*Math.PI
+      this.vtx.push(r*Math.sin(ph)*Math.cos(th),r*Math.cos(ph),r*Math.sin(ph)*Math.sin(th))
+      this.nrm.push(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th))}
+    for(let y=0;y<hs;y++)for(let x=0;x<ws;x++){const a=y*(ws+1)+x,b=a+1,c=(y+1)*(ws+1)+x,d=c+1;this.idx.push(a,b,c,b,d,c)}
+  },
+  _sh(){
+    try{
+      const gl=this.gl;if(!gl)return
+      const vs='attribute vec3 p;attribute vec3 n;uniform mat4 mvp;uniform mat4 nm;uniform float t;uniform float fq;uniform float am;varying vec3 vn;varying float vd;float h(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,45.543)))*43758.5453);}float sn(vec3 p){vec3 i=floor(p);vec3 fr=fract(p);fr=fr*fr*(3.-2.*fr);float a=h(i);float b=h(i+vec3(1,0,0));float c=h(i+vec3(0,1,0));float d=h(i+vec3(1,1,0));float e=h(i+vec3(0,0,1));float f=h(i+vec3(1,0,1));float g=h(i+vec3(0,1,1));float hh=h(i+vec3(1,1,1));return mix(mix(mix(a,b,fr.x),mix(c,d,fr.x),fr.y),mix(mix(e,f,fr.x),mix(g,hh,fr.x),fr.y),fr.z);}void main(){float d=sn(p*2.8+t*.25)*am*fq;vec3 pos=p+n*d;gl_Position=mvp*vec4(pos,1.);vn=normalize((nm*vec4(n,1.)).xyz);vd=d;}'
+      const fs='precision highp float;uniform vec3 c1;uniform vec3 c2;uniform float t;uniform vec3 gc;varying vec3 vn;varying float vd;void main(){vec3 n=normalize(vn);float fr=1.-abs(dot(n,vec3(0,0,1)));float mx=.5+.5*sin(vd*10.+t*.4);vec3 co=mix(c1,c2,mx);co+=gc*fr*.45;float al=.45+fr*.45;gl_FragColor=vec4(co,al);}'
+      const mk=(s,t)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh}
+      const vsh=mk(vs,gl.VERTEX_SHADER),fsh=mk(fs,gl.FRAGMENT_SHADER)
+      if(!gl.getShaderParameter(vsh,gl.COMPILE_STATUS)||!gl.getShaderParameter(fsh,gl.COMPILE_STATUS)){console.warn('Shader compile failed');return}
+      this.prog=gl.createProgram()
+      gl.attachShader(this.prog,vsh);gl.attachShader(this.prog,fsh);gl.linkProgram(this.prog)
+      if(!gl.getProgramParameter(this.prog,gl.LINK_STATUS)){console.warn('Shader link failed');return}
+      gl.useProgram(this.prog)
+      this.loc={p:gl.getAttribLocation(this.prog,'p'),n:gl.getAttribLocation(this.prog,'n'),mvp:gl.getUniformLocation(this.prog,'mvp'),nm:gl.getUniformLocation(this.prog,'nm'),t:gl.getUniformLocation(this.prog,'t'),fq:gl.getUniformLocation(this.prog,'fq'),am:gl.getUniformLocation(this.prog,'am'),c1:gl.getUniformLocation(this.prog,'c1'),c2:gl.getUniformLocation(this.prog,'c2'),gc:gl.getUniformLocation(this.prog,'gc')}
+    }catch(e){console.warn('ORB shader error:',e);this.run=0}
+  },
+  _buf(){
+    const gl=this.gl
+    this.bufs.p=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.p);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(this.vtx),gl.STATIC_DRAW)
+    this.bufs.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.n);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(this.nrm),gl.STATIC_DRAW)
+    this.bufs.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,this.bufs.i);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(this.idx),gl.STATIC_DRAW)
+  },
+  // 🔥 بدء التقاط المايك
+  startMic(){
+    if(this.analyser)return
+    try{
+      const ctx=AUD._act||new(window.AudioContext||window.webkitAudioContext)()
+      if(!AUD._act)AUD._act=ctx
+      navigator.mediaDevices.getUserMedia({audio:true,echoCancellation:true}).then(s=>{
+        this.micStream=s;this.analyser=ctx.createAnalyser()
+        this.analyser.fftSize=128;this.freqData=new Uint8Array(this.analyser.frequencyBinCount)
+        ctx.createMediaStreamSource(s).connect(this.analyser)
+      }).catch(()=>{})
+    }catch(e){}
+  },
+  // 🔥 إيقاف المايك
+  stopMic(){
+    if(this.micStream){try{this.micStream.getTracks().forEach(t=>t.stop())}catch(e){}this.micStream=null}
+    this.analyser=null;this.freqData=null
+  },
+  setState(s){this.state=s},
+  _loop(){
+    if(!this.run||!this.prog)return;const gl=this.gl;if(!gl)return
+    this.time+=.016;gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+    gl.useProgram(this.prog);gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.p);gl.enableVertexAttribArray(this.loc.p);gl.vertexAttribPointer(this.loc.p,3,gl.FLOAT,0,0,0)
+    gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.n);gl.enableVertexAttribArray(this.loc.n);gl.vertexAttribPointer(this.loc.n,3,gl.FLOAT,0,0,0)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,this.bufs.i)
+    const fov=55*Math.PI/180,f=1/Math.tan(fov/2),n=3.5,ff=10
+    const proj=[f,0,0,0,0,f,0,0,0,0,(ff+n)/(n-ff),-1,0,0,2*ff*n/(n-ff),0]
+    const rot=this.time*.25,c=Math.cos(rot),s=Math.sin(rot)
+    const model=[c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1],view=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,-5.5,1]
+    const mv=MUL(view,model),mvp=MUL(proj,mv),nm=[c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1]
+    if(this.loc.mvp)gl.uniformMatrix4fv(this.loc.mvp,0,new Float32Array(mvp))
+    if(this.loc.nm)gl.uniformMatrix4fv(this.loc.nm,0,new Float32Array(nm))
+    if(this.loc.t)gl.uniform1f(this.loc.t,this.time)
+    // 🔥 قراءة ترددات المايك إذا كان شغال
+    let micFq=0
+    if(this.analyser&&this.freqData){try{this.analyser.getByteFrequencyData(this.freqData);micFq=this.freqData.reduce((a,b)=>a+b,0)/this.freqData.length/128}catch(e){}}
+    const fq=this.state==='speaking'?.4+.5*micFq:this.state==='listening'?.5+.4*(.4+.6*(micFq||Math.sin(this.time*3.5))):.15+.15*(micFq||Math.sin(this.time*.7))
+    if(this.loc.fq)gl.uniform1f(this.loc.fq,Math.max(.05,fq))
+    if(this.loc.am)gl.uniform1f(this.loc.am,this.state==='speaking'?.55:.35)
+    const cl=this.COL[this.state]||this.COL.idle
+    if(this.loc.c1)gl.uniform3f(this.loc.c1,cl[0]/255,cl[1]/255,cl[2]/255)
+    if(this.loc.c2)gl.uniform3f(this.loc.c2,cl[0]/400,cl[1]/400,cl[2]/400)
+    if(this.loc.gc)gl.uniform3f(this.loc.gc,cl[0]/180,cl[1]/180,cl[2]/180)
+    if(this.idx)gl.drawElements(gl.TRIANGLES,this.idx.length,gl.UNSIGNED_SHORT,0);requestAnimationFrame(()=>this._loop())
+  }
+}
+function MUL(a,b){const r=[];for(let i=0;i<4;i++)for(let j=0;j<4;j++){r[i*4+j]=0;for(let k=0;k<4;k++)r[i*4+j]+=a[i*4+k]*b[k*4+j]}return r}
+
+// ═══ 🎉 Confetti ملحمي ═══
+const CF={
+  p:[],cvs:null,ctx:null,run:0,
+  init(){
+    this.cvs=document.createElement('canvas');this.cvs.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:15;pointer-events:none'
+    document.body.appendChild(this.cvs);this.ctx=this.cvs.getContext('2d')
+    this._res();window.addEventListener('resize',()=>this._res())
+  },
+  _res(){if(!this.cvs)return;const dpr=window.devicePixelRatio||1;this.cvs.width=innerWidth*dpr;this.cvs.height=innerHeight*dpr;this.cvs.style.width=innerWidth+'px';this.cvs.style.height=innerHeight+'px';if(this.ctx)this.ctx.scale(dpr,dpr)},
+  burst(x,y,epic){
+    const cx=x||innerWidth/2,cy=y||innerHeight/3,cnt=epic?120:40
+    for(let i=0;i<cnt;i++){const a=Math.random()*Math.PI*2,s=Math.random()*12+3;this.p.push({x:cx,y:cy,vx:Math.cos(a)*s*2,vy:Math.sin(a)*s*2-6,sz:Math.random()*8+2,c:epic?[255,215,0]:[Math.random()*200+55,Math.random()*200+55,Math.random()*100+155],l:1,sh:epic?Math.random()*4+2:0,dr:Math.random()*.015+.005})}
+    if(!this.run){this.run=1;this._anim()}
+  },
+  subjectComplete(sub){
+    const el=document.createElement('div');el.style.cssText='position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);flex-direction:column;gap:20px;animation:fadeIn .6s'
+    el.innerHTML=`<div style="font-size:60px;animation:bounce 1s infinite">${SUBJECTS[sub]?.icon||'🏆'}</div><div style="color:#fff;font-size:28px;font-weight:800">🎊 أتقنت ${SUBJECTS[sub]?.name||'المادة'}!</div><div style="color:rgba(255,255,255,0.4);font-size:14px">أنت بطل حقيقي يا ${ESC(T.childName)}!</div><div style="margin-top:10px;font-size:10px;color:rgba(255,255,255,0.2)">اضغط في أي مكان</div>`
+    el.addEventListener('click',()=>{el.remove()});document.body.appendChild(el)
+    this.burst(innerWidth/2,innerHeight/3,true)
+    setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .5s';setTimeout(()=>el.remove(),500)},4000)
+    AUD.sfx('win')
+  },
+  _anim(){
+    if(!this.run)return;const c=this.ctx;if(!c)return
+    c.clearRect(0,0,innerWidth,innerHeight)
+    this.p=this.p.filter(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.l-=p.dr
+      if(p.l<=0)return false
+      c.globalAlpha=p.l;c.fillStyle=`rgb(${p.c[0]|0},${p.c[1]|0},${p.c[2]|0})`;c.beginPath()
+      if(p.sh){c.shadowColor='rgba(255,215,0,0.6)';c.shadowBlur=p.sh}
+      c.arc(p.x,p.y,p.sz*p.l,0,Math.PI*2);c.fill()
+      return true
+    })
+    c.globalAlpha=1;c.shadowBlur=0
+    if(this.p.length)requestAnimationFrame(()=>this._anim())
+    else this.run=0
+  }
+}
+// ═══ 🗺️ خريطة التعلم ═══
+const MAP={
+  el:null,cvs:null,ctx:null,sub:null,
+  show(k){
+    this.sub=k;const ls=DL[k];if(!ls||!ls.length)return
+    if(!this.el){
+      this.el=document.createElement('div');this.el.style.cssText='position:fixed;inset:0;z-index:25;background:rgba(0,0,0,0.85);display:none;flex-direction:column;align-items:center;justify-content:center'
+      this.el.innerHTML=`<div style="color:#fff;font-size:20px;font-weight:700;margin-bottom:20px" id="mapTitle"></div><canvas id="mapCanvas" style="width:90%;max-width:400px;height:70%;cursor:pointer"></canvas><div style="color:rgba(255,255,255,0.2);font-size:10px;margin-top:12px">اضغط على درس لتبدأ</div>`
+      document.body.appendChild(this.el)
+      this.cvs=this.el.querySelector('#mapCanvas');this.ctx=this.cvs.getContext('2d')
+      this.cvs.addEventListener('click',e=>this._click(e))
+    }
+    this.el.style.display='flex'
+    const dpr=window.devicePixelRatio||1;const w=Math.min(innerWidth*.9,400),h=innerHeight*.7
+    this.cvs.width=w*dpr;this.cvs.height=h*dpr;this.cvs.style.width=w+'px';this.cvs.style.height=h+'px';this.ctx.scale(dpr,dpr)
+    this.el.querySelector('#mapTitle').textContent=`🗺️ ${SUBJECTS[k].icon} ${SUBJECTS[k].name}`
+    this._draw(w,h)
+  },
+  hide(){
+    if(this.el)this.el.style.display='none'
+    if(T.currentSub&&T.currIdx>=0)TEACH.teach(T.currentSub,T.currIdx)
+  },
+  _draw(w,h){
+    if(!this.ctx||!this.sub)return;const c=this.ctx,ls=DL[this.sub],R=Math.min(w/14,24),gap=Math.min(w/(ls.length+1),55)
+    c.clearRect(0,0,w,h);const cx=w/2
+    c.strokeStyle='rgba(255,255,255,0.06)';c.lineWidth=2;c.beginPath()
+    ls.forEach((_,i)=>{const y=gap+i*gap;if(i===0)c.moveTo(cx,y+R);else c.lineTo(cx,y-gap+R)})
+    c.stroke()
+    ls.forEach((l,i)=>{
+      const y=gap+i*gap,completed=DB.quizzes().filter(q=>q.sub===this.sub&&q.lesson===l.id&&q.ok).length>0,active=i===T.currIdx&&T.currentSub===this.sub
+      c.beginPath();c.arc(cx,y,R,0,Math.PI*2)
+      if(active){c.fillStyle='#3B82F6';c.shadowColor='rgba(59,130,246,0.5)';c.shadowBlur=20}
+      else if(completed){c.fillStyle='#F59E0B';c.shadowColor='rgba(245,158,11,0.3)';c.shadowBlur=10}
+      else{c.fillStyle='rgba(255,255,255,0.06)';c.shadowBlur=0}
+      c.fill();c.shadowBlur=0
+      if(!completed&&!active){c.strokeStyle='rgba(255,255,255,0.1)';c.lineWidth=1;c.stroke()}
+      c.fillStyle=active?'#fff':completed?'#fff':'rgba(255,255,255,0.2)';c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle'
+      c.fillText(i+1,cx,y)
+      c.fillStyle='rgba(255,255,255,0.4)';c.font='8px sans-serif';c.textBaseline='top'
+      c.fillText(l.t.length>12?l.t.slice(0,12)+'…':l.t,cx,y+R+4)
+    })
+  },
+  _click(e){
+    const rect=this.cvs.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top
+    const w=rect.width,h=rect.height,ls=DL[this.sub],R=Math.min(w/14,24),cx=w/2,gap=Math.min(w/(ls.length+1),55)
+    ls.forEach((l,i)=>{const ny=gap+i*gap;if(Math.hypot(x-cx,y-ny)<R+10){this.hide();T.currIdx=i;TEACH.teach(this.sub,i)}})
+  }
+}
+// ═══ 🎧 Ambient Focus (موجات 40Hz) ═══
+const AMB={osc:null,gain:null,on:0,
+  start(){
+    if(this.on||!AUD._act)return;try{
+      const ctx=AUD._act;this.gain=ctx.createGain();this.gain.gain.value=0;this.gain.connect(ctx.destination)
+      this.osc=ctx.createOscillator();this.osc.type='sine';this.osc.frequency.value=40;this.osc.connect(this.gain)
+      this.osc.start();this.on=1
+    }catch(e){}
+  },
+  stop(){try{if(this.osc)this.osc.stop()}catch(e){}this.osc=null;this.gain=null;this.on=0}
+}
+
+// ═══ الصوت ═══
+const AUD={
+  syn:window.speechSynthesis,v:null,q:[],b:0,gen:'male',
+  init(){
+    if(!this.syn)return
+    const p=()=>{const v=this.syn.getVoices();if(v.length)this._pk();else setTimeout(p,150)}
+    if(this.syn.getVoices().length)this._pk()
+    else{this.syn.addEventListener('voiceschanged',()=>this._pk(),{once:1});setTimeout(p,200)}
+  },
+  _pk(){
+    if(!this.syn)return;const v=this.syn.getVoices();if(!v.length)return
+    let b=null,bs=-1
+    for(const x of v){if(!x.lang.startsWith('ar'))continue;let s=0;if(x.name.includes('Maged')||x.name.includes('Laila'))s=5;else if(x.name.includes('Microsoft'))s=2;else s=1;if(this.gen==='male'&&x.name.includes('Female'))s-=1;if(this.gen==='female'&&x.name.includes('Male'))s-=1;if(s>bs){bs=s;b=x}}
+    this.v=b||v.find(x=>x.lang.startsWith('ar'))||v[0]
+  },
+  spk(t,cb){
+    if(!this.syn||!t){if(cb)cb();return}
+    const p=t.match(/[^.!?]+[.!?]+/g)||[t]
+    p.forEach((x,i)=>{this.q.push({t:x.trim(),cb:i===p.length-1?cb:null})})
+    if(!this.b)this._nx()
+  },
+  _nx(){
+    if(this.b||!this.q.length)return
+    this.b=1;const i=this.q.shift(),u=new SpeechSynthesisUtterance(i.t)
+    u.lang='ar-SA';u.rate=.92;u.pitch=.98;u.volume=1;if(this.v)u.voice=this.v
+    u.onstart=()=>{T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active')}
+    u.onend=()=>{if(i._done)return;i._done=1;this.b=0;T.sp=0;if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
+    u.onerror=()=>{if(i._done)return;i._done=1;this.b=0;T.sp=0;if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
+    try{this.syn.speak(u)}catch(e){this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
+  },
+  _autoListen(){
+    if(T.li||T.sp||T.silencePrompt)return
+    if(T.phase==='init')return
+    clearTimeout(this._altimer)
+    this._altimer=setTimeout(()=>{SR.start();MB()},200)
+  },
+  clr(){if(this.syn)try{this.syn.cancel()}catch(e){}this.q=[];this.b=0;T.sp=0},
+  _act:null,
+  sfx(tp){
+    try{
+      if(!this._act)this._act=new(window.AudioContext||window.webkitAudioContext)()
+      const ctx=this._act,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination)
+      if(tp==='win'){
+        for(let i=0;i<6;i++){const n=ctx.createOscillator(),ng=ctx.createGain();n.type='sawtooth';n.frequency.value=800+Math.random()*400;ng.gain.setValueAtTime(.04,ctx.currentTime+i*.08);ng.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.08+.06);n.connect(ng);ng.connect(ctx.destination);n.start(ctx.currentTime+i*.08);n.stop(ctx.currentTime+i*.08+.06)}
+        const bs=ctx.sampleRate*.05,buf=ctx.createBuffer(1,bs,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/bs,2)
+        const ns=ctx.createBufferSource();ns.buffer=buf;const ng2=ctx.createGain();ng2.gain.value=.3;ns.connect(ng2);ng2.connect(ctx.destination);ns.start(ctx.currentTime+.05)
+      }else{
+        // صوت خطأ: descending buzz
+        for(let i=0;i<3;i++){const n=ctx.createOscillator(),ng=ctx.createGain();n.type='square';n.frequency.setValueAtTime(200-i*40,ctx.currentTime+i*.1);n.frequency.linearRampToValueAtTime(80,ctx.currentTime+i*.1+.12);ng.gain.setValueAtTime(.08,ctx.currentTime+i*.1);ng.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.1+.12);n.connect(ng);ng.connect(ctx.destination);n.start(ctx.currentTime+i*.1);n.stop(ctx.currentTime+i*.1+.12)}
+        const bs=ctx.sampleRate*.03,buf=ctx.createBuffer(1,bs,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/bs,4);const ns=ctx.createBufferSource();ns.buffer=buf;const ng2=ctx.createGain();ng2.gain.value=.15;ns.connect(ng2);ng2.connect(ctx.destination);ns.start(ctx.currentTime+.05)
+      }
+    }catch(e){}
+  }
+}
+
+// ═══ الاستماع ═══
+const SR={
+  r:null,ok:0,timer:null,silenceTimer:null,silenceDelay:8000,
+  init(){
+    const C=window.SpeechRecognition||window.webkitSpeechRecognition
+    if(!C)return;this.ok=1;this.r=new C();this.r.lang='ar-SA';this.r.continuous=1;this.r.interimResults=1;this.r.maxAlternatives=3
+    this.r.onresult=e=>{clearTimeout(this.timer);clearTimeout(this.silenceTimer);let f='',n='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)f+=t;else n+=t}const d=f||n;if(d.trim())$('studentSpeech').textContent=d;this.timer=setTimeout(()=>{if(f.trim())this._proc(NORM(f.trim()))},400);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}
+    this.r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;this.stop();MB()}
+    this.r.onend=()=>{if(T.li&&!T._srStop){try{this.r.start()}catch(e){}}else{MB();T._srStop=0}}
+  },
+  start(){if(!this.ok||!this.r)return;T._srStop=0;try{this.r.start();T.li=1;ORB.setState('listening');$('statusBar').textContent='أستمع...';$('statusBar').classList.add('active');$('micBtn').classList.add('active');ORB.startMic();clearTimeout(this.silenceTimer);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}catch(e){}},
+  stop(){if(!this.r)return;T._srStop=1;try{this.r.stop()}catch(e){}T.li=0;$('micBtn').classList.remove('active');ORB.stopMic();clearTimeout(this.silenceTimer);if(!T.sp){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}},
+  _proc(t){this.stop();if(!SAFE(t)){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return};TEACH.input(t)},
+  _silence(){
+    this.stop()
+    T.silencePrompt=1
+    AUD.spk((T.childName||'يا بطل')+'؟',()=>{T.silencePrompt=0;if(!T.li)setTimeout(()=>this.start(),300)})
+  }
+}
+function MB(){const b=$('micBtn'),ic=$('micIcon');if(b)b.classList.toggle('active',T.li);if(ic)ic.textContent=T.li?'⏹':'🎤'}
+
+// ═══ عرض الكلمات ═══
+let _wid=0,_wt
+function SW(text){
+  $('studentSpeech').textContent='';WORDS(text)
+}
+function WORDS(text){
+  const id=++_wid;const words=text.split(/(\s+)/).filter(w=>w.trim().length>0)
+  clearTimeout(_wt);const line=$('speechText');if(!line)return;line.innerHTML=''
+  if(!words.length){const sp=document.createElement('span');sp.style.cssText='color:rgba(255,255,255,.08);font-size:13px';sp.textContent=text;line.appendChild(sp);return}
+  words.forEach(w=>{if(/^\s+$/.test(w))return;const sp=document.createElement('span');sp.className='word';sp.textContent=w;line.appendChild(sp)})
+  const spans=line.querySelectorAll('.word'),total=spans.length
+  let idx=0;const int=Math.max(60,Math.min(180,Math.floor(70*120/(total||1))))
+  function rev(){if(idx>=total||id!==_wid)return;spans[idx].classList.add('visible');idx++;if(idx<total)_wt=setTimeout(rev,int)}
+  setTimeout(rev,80)
+}
+
+// ═══ 🎤 مساعد النطق ═══
+const PRONOUNCE={
+  words:[],idx:0,active:false,srBackup:null,
+  // استخراج كلمات إنجليزية من نص الدرس
+  _extract(text){return text.split(/[^a-zA-Z]+/).filter(w=>w.length>2).map(w=>w.toLowerCase())},
+  start(k,lsIdx){
+    if(k!=='english'||!DL.english[lsIdx]){AUD.spk('النطق متاح فقط للغة الإنجليزية');return}
+    const lesson=DL.english[lsIdx];let words=[]
+    lesson.n.forEach(n=>words=words.concat(this._extract(n)))
+    lesson.f.forEach(f=>words=words.concat(this._extract(f)))
+    this.words=[...new Set(words)].filter(w=>w.length>2).sort(()=>Math.random()-.5).slice(0,8)
+    if(!this.words.length){AUD.spk('ما لقيت كلمات لهذا الدرس');return}
+    this.idx=0;this.active=true;AUD.spk(`درب نطقك! راح أعرض 8 كلمات. ردّد وراي.`)
+    WORDS(`🎤 تدرب على النطق\n${this.words.length} كلمة`)
+    // حفظ إعدادات SR وتغييرها للإنجليزية مع إعادة تشغيل
+    if(SR.r){
+      const wasListening=T.li
+      if(wasListening)SR.stop() // نوقف SR أولاً
+      this.srBackup=SR.r.lang;SR.r.lang='en-US'
+      if(wasListening)setTimeout(()=>SR.start(),300) // نعيد التشغيل باللغة الجديدة
+    }
+    setTimeout(()=>this.next(),2000)
+  },
+  next(){
+    if(!this.active||this.idx>=this.words.length){this.finish();return}
+    const w=this.words[this.idx];WORDS(`🔤 قل: ${w}`)
+    AUD.spk(`قل ${w}`)
+    T.phase='pronounce'
+    T._pronounceWord=w
+  },
+  check(text){
+    if(!this.active||!T._pronounceWord)return
+    const w=T._pronounceWord,ok=new RegExp('\\b'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(text)
+    if(ok){AUD.sfx('win');AUD.spk('ممتاز! نطقك صحيح');WORDS('✅ ممتاز!');DB.addStar()}
+    else{AUD.spk('حاول مرة ثانية: '+w+'...');WORDS('🔄 حاول: '+w)}
+    this.idx++
+    if(ok){setTimeout(()=>this.next(),1500);CF.burst()}
+    else{setTimeout(()=>this.next(),2500)}
+  },
+  finish(){
+    this.active=false;T.phase='teaching'
+    if(SR.r&&this.srBackup)SR.r.lang=this.srBackup
+    AUD.spk('خلصت التدريب! نطقك راح يتحسن كل مرة')
+    WORDS('🎉 تدربت على النطق!\nكمل دروسك')
+    updateSB()
+  }
+}
+const T={sp:0,li:0,phase:'init',childName:null,currentSub:null,currIdx:0,quizQ:[],quizIdx:0,quizTotal:0,lastQuizTime:0,narrativeIndex:0,noAuto:0,silencePrompt:0}
+const TEACH={
+  start(){
+    T.childName=DB.name()
+    if(!T.childName){
+      T.phase='askName'
+      setTimeout(()=>{AUD.spk('يا هلا بك في عيال حسان.. أنا أبو فهد، بكون معك خطوة بخطوة. قولي وش اسمك يا بطل؟');WORDS('يا هلا في عيال حسان\nأنا أبو فهد. وش اسمك؟')},600)
+    }else{
+      // فحص إذا كان كل المواد مكتملة
+      const allDone=SUBJ_KEYS.every(k=>{const r=DB.report(k);return r.total>0&&r.pct>=80})
+      T.phase='ready'
+      const h=new Date().getHours();const g=h<12?'صباح الخير':h<17?'مساء الخير':'هلا والله'
+      if(allDone){
+        setTimeout(()=>{
+          AUD.spk(`${g} يا ${T.childName} البطل! أنت أتقنت كل المواد الست! الكويت تفخر بك`)
+          WORDS(`🏆🏆🏆 ${g} يا بطل الكويت!\nأتقنت كل المواد الست!\nأنت فخر يا ${T.childName}!`)
+          CF.burst(innerWidth/2,innerHeight/3,true)
+          setTimeout(()=>CF.burst(innerWidth/2,innerHeight/3,true),800)
+          $('infoLine').textContent=`🏆 فخورين بك يا ${T.childName}!`
+        },600)
+      }else{
+        setTimeout(()=>{AUD.spk(`${g} يا ${T.childName}.. أبو فهد معك. عندنا 6 مواد: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}. اختر مادة تبدأ رحلتنا`);WORDS(`${g} يا ${T.childName}!\n${SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ')}`);$('infoLine').textContent=SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ')},600)
+      }
+    }
+  },
+  input(text){
+    const t=text.toLowerCase()
+    if(T.phase==='askName'){
+      const n=t.replace(/^(اسمي|انا|أنا|ismi|ana)\s*/i,'').trim()
+      if(n&&n.length<20){T.childName=n.charAt(0).toUpperCase()+n.slice(1);DB.setName(T.childName);T.phase='ready';AUD.spk(`كفو يا ${T.childName}! اسمك يرفع الراس. الحين قولي وش نبي ندرس؟ ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`);WORDS(`🌹 كفو يا ${T.childName}!\nاختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].icon).join(' ')}`);$('infoLine').textContent=SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ')}
+      else{AUD.spk('عذراً يا بطل، قل: اسمي [اسمك]');WORDS('قل: اسمي [اسمك]')}
+      return
+    }
+    if(T.phase==='ready'){
+      for(const k of SUBJ_KEYS){const s=SUBJECTS[k];const sn=s.name.replace(/[^a-z0-9\u0600-\u06FF]/g,'').toLowerCase();if(t.includes(k)||t.includes(sn)||sn.includes(t)||t.includes(s.icon)||(k==='english'&&(t.includes('إنجليزي')||t.includes('انجليزي')||t.includes('english')||t.includes('English')))||(k==='islamic'&&(t.includes('دين')||t.includes('إسلامي')||t.includes('اسلامي')))){this.start(k);return}}
+      if(t.includes('لا')||t.includes('ما عرفت')||t.includes('ما بعرف')){AUD.spk(`لا تقلق يا ${T.childName}! اختر: ${SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join('، ')}`);WORDS(`اختر مادة يا ${T.childName}! 😊`)}
+      else{AUD.spk(`ممتاز يا ${T.childName}! لكن حدد المادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join(' أو ')}`);WORDS('قل المادة اللي تبيها')}
+      return
+    }
+    if(T.phase==='teaching'){
+      if(t.includes('خريطة')||t.includes('map')){MAP.show(T.currentSub);return}
+      if((t.includes('نطق')||t.includes('تدرب'))&&T.currentSub==='english'){
+        PRONOUNCE.start(T.currentSub,T.currIdx);return
+      }
+      if(Date.now()-T.lastQuizTime>180000){this.quiz();return}
+      T.narrativeIndex++
+      const ls=DL[T.currentSub];if(!ls||!ls[T.currIdx])return
+      if(T.narrativeIndex<ls[T.currIdx].n.length){AUD.spk(ls[T.currIdx].n[T.narrativeIndex]);WORDS(ls[T.currIdx].n[T.narrativeIndex])}
+      else this.quiz()
+      return
+    }
+    if(T.phase==='pronounce'){PRONOUNCE.check(t);return}
+    if(T.phase==='quiz'){this.check(t);return}
+    if(T.phase==='feedback'){
+      if(t.includes('نعم')||t.includes('اي')||t.includes('ايه')||t.includes('yes')||t.includes('تمام')||t.includes('طيب')){
+        T.currIdx++;T.noAuto=0
+        if(T.currentSub&&DL[T.currentSub][T.currIdx]){this.teach(T.currentSub,T.currIdx)}
+        else{AUD.spk(`أحسنت يا ${T.childName}! أكملت كل الدروس 🎉`);WORDS(`🎉 مبروك يا ${T.childName}!`);T.phase='ready';$('infoLine').textContent=SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ')}
+      }else{T.narrativeIndex=0;T.phase='teaching';T.lastQuizTime=Date.now();T.noAuto=0;this.teach(T.currentSub,T.currIdx)}
+    }
+  },
+  start(k){
+    const ls=DL[k];if(!ls||!ls.length)return
+    AMB.stop() // أوقف الموجات السابقة
+    T.currentSub=k;T.currIdx=0;T.lastQuizTime=Date.now();T.narrativeIndex=0;T.noAuto=0
+    DB.setLastSub(SUBJECTS[k].name)
+    AUD.spk(`تم اعتماد مادة ${SUBJECTS[k].name} يا ${T.childName}.. عندنا ${ls.length} درس. تفضل الخريطة`)
+    WORDS(`🗺️ ${SUBJECTS[k].icon} ${SUBJECTS[k].name}\n${ls.length} درس`)
+    $('infoLine').textContent=SUBJECTS[k].icon+' '+SUBJECTS[k].name
+    // 🗺️ اعرض الخريطة
+    MAP.show(k)
+    AMB.start()
+  },
+  teach(k,idx){
+    const ls=DL[k];if(!ls||idx>=ls.length){AUD.spk(`أحسنت يا ${T.childName}! أكملت كل الدروس 🎉`);WORDS(`🎉 مبروك يا ${T.childName}!`);T.phase='ready';$('infoLine').textContent=SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ');return}
+    T.currIdx=idx;T.narrativeIndex=0;T.phase='teaching';T.lastQuizTime=Date.now();T.noAuto=0
+    $('infoLine').textContent=`${SUBJECTS[k].icon} ${SUBJECTS[k].name} • الدرس ${idx+1} من ${ls.length}`
+    WORDS(`📖 ${ls[idx].t}`)
+    setTimeout(()=>{AUD.spk(ls[idx].n[0]);setTimeout(()=>WORDS(ls[idx].n[0]),300)},800)
+  },
+  quiz(){
+    const ls=DL[T.currentSub];if(!ls||!ls[T.currIdx]||!ls[T.currIdx].q||!ls[T.currIdx].q.length){
+      T.narrativeIndex=0;T.currIdx++
+      if(T.currentSub&&DL[T.currentSub][T.currIdx])this.teach(T.currentSub,T.currIdx)
+      else{AUD.spk(`أحسنت يا ${T.childName}! 🎉`);WORDS(`🎉 مبروك!`);T.phase='ready'}
+      return
+    }
+    T.phase='quiz';T.noAuto=1
+    const qs=ls[T.currIdx].q
+    T.quizTotal=Math.min(qs.length,5)
+    T.quizQ=[...qs].sort(()=>Math.random()-.5).slice(0,T.quizTotal)
+    T.quizIdx=0
+    AUD.spk(`يا ${T.childName}، عندي ${T.quizTotal} أسئلة. خلينا نشوف شو تعلمت!`)
+    WORDS(`📝 ${T.quizTotal} أسئلة!`)
+    setTimeout(()=>this.ask(),2000)
+  },
+  ask(){
+    if(T.quizIdx>=T.quizTotal||!T.quizQ[T.quizIdx]){this.finish();return}
+    const q=T.quizQ[T.quizIdx];T.noAuto=0
+    AUD.spk(`سؤال ${T.quizIdx+1}: ${q.q}`)
+    WORDS(`❓ السؤال ${T.quizIdx+1}: ${q.q}`)
+  },
+  check(text){
+    if(T.quizIdx>=T.quizTotal||!T.quizQ[T.quizIdx])return
+    const q=T.quizQ[T.quizIdx],ok=q.e?q.e.some(e=>text.includes(e.toLowerCase())):false
+    if(ok){AUD.sfx('win');AUD.spk(q.c||'أحسنت!');WORDS('✅ '+(q.c||'أحسنت!'));DB.addQuiz({sub:T.currentSub,lesson:DL[T.currentSub][T.currIdx].id,q:q.q,ok:1});DB.addStar();CF.burst()}
+    else{AUD.sfx('lose');AUD.spk((q.w||`ركز يا ${T.childName}!`)+'، فكر مرة ثانية!');WORDS('❌ '+(q.w||`ركز يا ${T.childName}!`));DB.addQuiz({sub:T.currentSub,lesson:DL[T.currentSub][T.currIdx].id,q:q.q,ok:0})}
+    T.quizIdx++;T.noAuto=1;updateSB()
+    setTimeout(()=>this.ask(),1800)
+  },
+  finish(){
+    // نتيجة الدرس الحالي + المادة
+    const lsId=DL[T.currentSub]?.[T.currIdx]?.id
+    const allQs=DB.quizzes()
+    const lessonQs=allQs.filter(x=>x.sub===T.currentSub&&x.lesson===lsId)
+    const lessonOk=lessonQs.filter(x=>x.ok).length,lessonT=lessonQs.length||1
+    const lessonPct=Math.round(lessonOk/lessonT*100)
+    const subQs=allQs.filter(x=>x.sub===T.currentSub)
+    const subOk=subQs.filter(x=>x.ok).length,subT=subQs.length||1
+    const subPct=Math.round(subOk/subT*100)
+    let msg;const pct=lessonPct
+    if(pct>=80){
+      msg=`ممتاز يا ${T.childName}! ${pct}% في هذا الدرس! عمل رائع`
+      if(pct>=90){CF.burst(innerWidth/2,innerHeight/3,true);AUD.sfx('win')}
+    }else if(pct>=50)msg=`أحسنت يا ${T.childName}! ${pct}%. مع الممارسة تصير أفضل`;else msg=`لا تقلق يا ${T.childName}! ${pct}%. لنرجع نراجع الدرس`
+    AUD.spk(msg);WORDS(`📊 الدرس: ${lessonOk}/${lessonT} (${pct}%)\nالإجمالي: ${subOk}/${subT} (${subPct}%)\n${msg}`)
+    if(pct<50){setTimeout(()=>{AUD.spk(`دعنا نعيد الدرس بتركيز يا ${T.childName}`);WORDS('🔄 نعيد الدرس');T.narrativeIndex=0;T.phase='teaching';T.lastQuizTime=Date.now();this.teach(T.currentSub,T.currIdx)},3000)}
+    else if(pct>=80&&T.currIdx>=0&&T.currentSub&&DL[T.currentSub][T.currIdx+1]===undefined){
+      // 🎊 أكمل المادة — احتفال ملحمي
+      setTimeout(()=>{
+        CF.subjectComplete(T.currentSub)
+        AMB.stop()
+        T.phase='ready';$('infoLine').textContent=SUBJ_KEYS.map(s=>SUBJECTS[s].icon+' '+SUBJECTS[s].name).join(' | ')
+        AUD.spk(`ألف مبروك يا ${T.childName}! أتقنت ${SUBJECTS[T.currentSub].name} كاملة! أنت بطل الكويت`)
+        WORDS(`🏆 أتقنت ${SUBJECTS[T.currentSub].name}!\nأنت بطل الكويت يا ${T.childName}!`)
+      },2000)
+    }else{setTimeout(()=>{AUD.spk(`هل تنتقل للدرس التالي يا ${T.childName}؟`);WORDS(`➡️ إنتقل للدرس التالي؟\nقل: نعم أو لا`);T.phase='feedback'},3000)}
+    updateSB()
+  }
+}
+
+// ═══ القائمة الجانبية ═══
+const BADGES=[
+  {id:'math',ico:'🔢',label:'الرياضياتي',check:()=>DB.report('math').pct>=80},
+  {id:'arabic',ico:'📖',label:'النحوي',check:()=>DB.report('arabic').pct>=80},
+  {id:'science',ico:'🔬',label:'العالم',check:()=>DB.report('science').pct>=80},
+  {id:'english',ico:'🔤',label:'البطل العالمي',check:()=>DB.report('english').pct>=80},
+  {id:'islamic',ico:'🕌',label:'الحافظ',check:()=>DB.report('islamic').pct>=80},
+  {id:'national',ico:'🇰🇼',label:'الوطني',check:()=>DB.report('national').pct>=80},
+  {id:'genius',ico:'🧠',label:'العبقري',check:()=>SUBJ_KEYS.every(k=>DB.report(k).pct>=80)&&SUBJ_KEYS.some(k=>DB.report(k).total>0)},
+  {id:'star',ico:'⭐',label:'100 نجمة',check:()=>DB.stars()>=100}
+]
+function openSB(){$('sidebar').classList.add('open');$('sbOverlay').classList.add('open');updateSB()}
+function closeSB(){$('sidebar').classList.remove('open');$('sbOverlay').classList.remove('open')}
+function updateSB(){
+  $('childName').textContent=T.childName||DB.name()||'—'
+  $('starCount').textContent=DB.stars()
+  // 🔥 Streak
+  updateStreak()
+  // 🔥 Circular progress
+  const grid=$('cpGrid');grid.innerHTML='';const R=26,CIRC=2*Math.PI*R
+  SUBJ_KEYS.forEach(k=>{
+    const rep=DB.report(k);const pct=rep.total>0?rep.pct:0
+    const d=document.createElement('div');d.className='cp-item'
+    d.innerHTML=`<div class="cp-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="${R}"/><circle class="fg" cx="32" cy="32" r="${R}" stroke="${SUBJECTS[k].color}" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC-CIRC*pct/100}" style="stroke-dashoffset:${CIRC-CIRC*pct/100}"/></svg><span class="cp-icon">${SUBJECTS[k].icon}</span></div><div class="cp-lbl">${SUBJECTS[k].name}</div><div class="cp-pct">${pct}%</div>`
+    grid.appendChild(d)
+  })
+  // 🔥 Badges
+  const ba=$('badgeArea');ba.innerHTML=''
+  BADGES.forEach(b=>{const e=b.check();const d=document.createElement('span');d.className='badge'+(e?' earned':'');d.innerHTML=`<span class="b-icon">${e?b.ico:'🔒'}</span> ${b.label}`;ba.appendChild(d)})
+  // 🔥 Pie chart
+  const pc=$('reportBody');pc.innerHTML=''
+  const totalQ=SUBJ_KEYS.reduce((a,k)=>a+DB.report(k).total,0)
+  if(totalQ>0){
+    const sz=120,r=50,cx=sz/2,cy=sz/2,circ=2*Math.PI*r
+    let so=0;const svg=[`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="margin:0 auto 10px;display:block">`]
+    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(!rep.total)return;const frac=rep.ok/rep.total,seg=frac*circ;svg.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SUBJECTS[k].color}" stroke-width="18" stroke-dasharray="${seg} ${circ-seg}" stroke-dashoffset="${-so}" transform="rotate(-90 ${cx} ${cy})"/>`);so+=seg})
+    svg.push(`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="22" font-weight="700">${totalQ}</text><text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="8">سؤال</text></svg>`)
+    pc.innerHTML=svg.join('')+'<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">'
+    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(!rep.total)return;pc.innerHTML+=`<span style="font-size:8px;color:${SUBJECTS[k].color}">${SUBJECTS[k].icon} ${rep.ok}/${rep.total}</span> `})
+    // 🔥 توصية
+    let worst=null,worstPct=100
+    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(rep.total>0&&rep.pct<worstPct){worstPct=rep.pct;worst=k}})
+    if(worst)pc.innerHTML+=`</div><div style="margin-top:8px;padding:8px;background:rgba(250,204,21,0.06);border-radius:8px;font-size:9px;color:#facc15">💡 يحتاج مراجعة: ${SUBJECTS[worst].name} (${worstPct}%)</div>`
+  }else{
+    const _noData=document.createElement('span');_noData.style.cssText='color:rgba(255,255,255,.15);font-size:10px';_noData.textContent='لا توجد بيانات بعد';pc.appendChild(_noData)
+  }
+}
+function updateStreak(){
+  const today=new Date().toDateString()
+  let last=S('h8_streakLast')||'',count=+S('h8_streak')||0
+  if(last!==today){const yest=new Date(Date.now()-864e5).toDateString();if(last===yest)count++;else count=1;SS('h8_streak',count);SS('h8_streakLast',today)}
+  $('streakNum').textContent=count
+}
+
+// ═══ التشغيل ═══
+const $=id=>document.getElementById(id)
+
+function init(){
+  try{AUD.init()}catch(e){console.warn('AUD.init failed:',e)}
+  try{SR.init()}catch(e){console.warn('SR.init failed:',e)}
+  try{ORB.init($('glCanvas'))}catch(e){console.warn('ORB.init failed:',e)}
+  try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
+  try{
+    const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
+    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if(T.sp)AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB()}})
+    el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
+    el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
+    el('menuBtn','click',openSB)
+    el('closeSb','click',closeSB)
+    el('sbOverlay','click',closeSB)
+    const mb=$('mapBtn'),pb=$('pronBtn')
+    if(mb)mb.addEventListener('click',()=>{if(T.currentSub)MAP.show(T.currentSub)})
+    if(pb)pb.addEventListener('click',()=>{if(T.currentSub==='english'&&T.currIdx>=0)PRONOUNCE.start(T.currentSub,T.currIdx)})
+    document.addEventListener('keydown',e=>{if(e.key==='m'||e.key==='م'){if(T.currentSub)MAP.show(T.currentSub)};if(e.key==='p'||e.key==='ن'){if(T.currentSub==='english'&&T.currIdx>=0)PRONOUNCE.start(T.currentSub,T.currIdx)}})
+    const origStart=TEACH.start;TEACH.start=function(k){origStart.call(this,k);if(mb)mb.style.display='block';if(pb){pb.style.display=k==='english'?'block':'none';setTimeout(()=>{pb.style.opacity=k==='english'?'0.3':'0'},100)}}
+    let tc=0,tt;document.querySelector('.logo')?.addEventListener('click',()=>{tc++;clearTimeout(tt);if(tc>=3){tc=0;AUD.gen=AUD.gen==='male'?'female':'male';AUD.v=null;AUD._pk();const msg=AUD.gen==='male'?'تم التبديل لصوت أبو فهد':'تم التبديل لصوت أم فهد';AUD.spk(msg);WORDS('🔄 '+msg)}tt=setTimeout(()=>tc=0,800)})
+    TEACH.start()
+  }catch(e){console.error('Init setup error:',e)}
+}
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()
+</script>
+</body>
+</html>

@@ -316,7 +316,7 @@ const DL={
 };
 // ═══ WebGL الكرة البلورية ═══
 const ORB={
-  gl:null,prog:null,bufs:{},loc:{},time:0,state:'idle',run:1,
+  gl:null,prog:null,bufs:{},loc:{},time:0,state:'idle',run:1,_lt:0,
   COL:{speaking:[0,168,84],listening:[59,130,246],idle:[100,160,255]},
   // 🔥 AnalyserNode للميكروفون
   micStream:null,analyser:null,freqData:null,
@@ -377,7 +377,8 @@ const ORB={
   setState(s){this.state=s},
   _loop(){
     if(!this.run||!this.prog)return;const gl=this.gl;if(!gl)return
-    this.time+=.016;gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+    const now=performance.now();if(!this._lt)this._lt=now
+    const dt=Math.min((now-this._lt)/1000,.1);this._lt=now;this.time+=dt;gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
     gl.useProgram(this.prog);gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.p);gl.enableVertexAttribArray(this.loc.p);gl.vertexAttribPointer(this.loc.p,3,gl.FLOAT,0,0,0)
     gl.bindBuffer(gl.ARRAY_BUFFER,this.bufs.n);gl.enableVertexAttribArray(this.loc.n);gl.vertexAttribPointer(this.loc.n,3,gl.FLOAT,0,0,0)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,this.bufs.i)
@@ -412,7 +413,7 @@ const CF={
     document.body.appendChild(this.cvs);this.ctx=this.cvs.getContext('2d')
     this._res();window.addEventListener('resize',()=>this._res())
   },
-  _res(){if(!this.cvs)return;const dpr=window.devicePixelRatio||1;this.cvs.width=innerWidth*dpr;this.cvs.height=innerHeight*dpr;this.cvs.style.width=innerWidth+'px';this.cvs.style.height=innerHeight+'px';if(this.ctx)this.ctx.scale(dpr,dpr)},
+  _res(){if(!this.cvs)return;const dpr=window.devicePixelRatio||1;this.cvs.width=innerWidth*dpr;this.cvs.height=innerHeight*dpr;this.cvs.style.width=innerWidth+'px';this.cvs.style.height=innerHeight+'px';if(this.ctx)this.ctx.setTransform(dpr,0,0,dpr,0,0)},
   burst(x,y,epic){
     const cx=x||innerWidth/2,cy=y||innerHeight/3,cnt=epic?120:40
     for(let i=0;i<cnt;i++){const a=Math.random()*Math.PI*2,s=Math.random()*12+3;this.p.push({x:cx,y:cy,vx:Math.cos(a)*s*2,vy:Math.sin(a)*s*2-6,sz:Math.random()*8+2,c:epic?[255,215,0]:[Math.random()*200+55,Math.random()*200+55,Math.random()*100+155],l:1,sh:epic?Math.random()*4+2:0,dr:Math.random()*.015+.005})}
@@ -522,8 +523,6 @@ const AUD={
   spk(t,cb){
     if(!t){if(cb)cb();return}
     if(!this.syn||!this.ok){const s=$('studentSpeech');if(s)s.textContent='💬 '+t;if(cb)cb();return}
-    try{this.syn.cancel()}catch(e){}
-    this.b=0
     const p=t.match(/[^.!?]+[.!?]+/g)||[t]
     p.forEach((x,i)=>{this.q.push({t:x.trim(),cb:i===p.length-1?cb:null})})
     if(!this.b)this._nx()
@@ -546,7 +545,7 @@ const AUD={
     try{this.syn.speak(u)}catch(e){clearTimeout(wd);this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
   },
   _autoListen(){
-    if(T.li||T.sp||T.silencePrompt)return
+    if(T.li||T.sp||T.silencePrompt||T.userStopped)return
     if(T.phase==='init')return
     clearTimeout(this._altimer)
     this._altimer=setTimeout(()=>{SR.start();MB()},200)
@@ -581,13 +580,13 @@ const SR={
     this.r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;this.stop();MB()}
     this.r.onend=()=>{if(T.li&&!T._srStop){try{this.r.start()}catch(e){}}else{MB();T._srStop=0}}
   },
-  start(){if(!this.ok||!this.r)return;T._srStop=0;try{this.r.start();T.li=1;ORB.setState('listening');$('statusBar').textContent='أستمع...';$('statusBar').classList.add('active');$('micBtn').classList.add('active');ORB.startMic();clearTimeout(this.silenceTimer);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}catch(e){}},
+  start(){if(!this.ok||!this.r)return;T._srStop=0;T.userStopped=0;try{this.r.start();T.li=1;ORB.setState('listening');$('statusBar').textContent='أستمع...';$('statusBar').classList.add('active');$('micBtn').classList.add('active');ORB.startMic();clearTimeout(this.silenceTimer);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}catch(e){}},
   stop(){if(!this.r)return;T._srStop=1;try{this.r.stop()}catch(e){}T.li=0;$('micBtn').classList.remove('active');ORB.stopMic();clearTimeout(this.silenceTimer);if(!T.sp){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}},
   _proc(t){this.stop();if(!SAFE(t)){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return};TEACH.input(t)},
   _silence(){
     this.stop()
     T.silencePrompt=1
-    AUD.spk((T.childName||'يا بطل')+'؟',()=>{T.silencePrompt=0;if(!T.li)setTimeout(()=>this.start(),300)})
+    AUD.spk((T.childName||'يا بطل')+'؟',()=>{T.silencePrompt=0;if(!T.li&&!T.userStopped)setTimeout(()=>this.start(),300)})
   }
 }
 function MB(){const b=$('micBtn'),ic=$('micIcon');if(b)b.classList.toggle('active',T.li);if(ic)ic.textContent=T.li?'⏹':'🎤'}
@@ -655,7 +654,7 @@ const PRONOUNCE={
     updateSB()
   }
 }
-const T={sp:0,li:0,phase:'init',childName:null,currentSub:null,currIdx:0,quizQ:[],quizIdx:0,quizTotal:0,lastQuizTime:0,narrativeIndex:0,noAuto:0,silencePrompt:0}
+const T={sp:0,li:0,phase:'init',childName:null,currentSub:null,currIdx:0,quizQ:[],quizIdx:0,quizTotal:0,lastQuizTime:0,narrativeIndex:0,noAuto:0,silencePrompt:0,userStopped:0}
 const TEACH={
   start(){
     T.childName=DB.name()
@@ -759,7 +758,7 @@ const TEACH={
   },
   check(text){
     if(T.quizIdx>=T.quizTotal||!T.quizQ[T.quizIdx])return
-    const q=T.quizQ[T.quizIdx],ok=q.e?q.e.some(e=>text.includes(e.toLowerCase())):false
+    const q=T.quizQ[T.quizIdx],ok=q.e?q.e.some(e=>text.split(/\s+/).includes(e.toLowerCase().trim())):false
     if(ok){AUD.sfx('win');AUD.spk(q.c||'أحسنت!');WORDS('✅ '+(q.c||'أحسنت!'));DB.addQuiz({sub:T.currentSub,lesson:DL[T.currentSub][T.currIdx].id,q:q.q,ok:1});DB.addStar();CF.burst()}
     else{AUD.sfx('lose');AUD.spk((q.w||`ركز يا ${T.childName}!`)+'، فكر مرة ثانية!');WORDS('❌ '+(q.w||`ركز يا ${T.childName}!`));DB.addQuiz({sub:T.currentSub,lesson:DL[T.currentSub][T.currIdx].id,q:q.q,ok:0})}
     T.quizIdx++;T.noAuto=1;updateSB()
@@ -812,32 +811,33 @@ function closeSB(){$('sidebar').classList.remove('open');$('sbOverlay').classLis
 function updateSB(){
   $('childName').textContent=T.childName||DB.name()||'—'
   $('starCount').textContent=DB.stars()
-  // 🔥 Streak
   updateStreak()
-  // 🔥 Circular progress
+  // Cache report data — parsed once
+  const allQ=DG('quiz',[]),reps={}
+  SUBJ_KEYS.forEach(k=>{const q=allQ.filter(x=>x.sub===k);reps[k]={ok:q.filter(x=>x.ok).length,total:q.length,pct:q.length?Math.round(q.filter(x=>x.ok).length/q.length*100):0}})
+  // Circular progress
   const grid=$('cpGrid');grid.innerHTML='';const R=26,CIRC=2*Math.PI*R
   SUBJ_KEYS.forEach(k=>{
-    const rep=DB.report(k);const pct=rep.total>0?rep.pct:0
+    const rep=reps[k];const pct=rep.total>0?rep.pct:0
     const d=document.createElement('div');d.className='cp-item'
     d.innerHTML=`<div class="cp-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="${R}"/><circle class="fg" cx="32" cy="32" r="${R}" stroke="${SUBJECTS[k].color}" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC-CIRC*pct/100}" style="stroke-dashoffset:${CIRC-CIRC*pct/100}"/></svg><span class="cp-icon">${SUBJECTS[k].icon}</span></div><div class="cp-lbl">${SUBJECTS[k].name}</div><div class="cp-pct">${pct}%</div>`
     grid.appendChild(d)
   })
-  // 🔥 Badges
+  // Badges
   const ba=$('badgeArea');ba.innerHTML=''
   BADGES.forEach(b=>{const e=b.check();const d=document.createElement('span');d.className='badge'+(e?' earned':'');d.innerHTML=`<span class="b-icon">${e?b.ico:'🔒'}</span> ${b.label}`;ba.appendChild(d)})
-  // 🔥 Pie chart
+  // Pie chart
   const pc=$('reportBody');pc.innerHTML=''
-  const totalQ=SUBJ_KEYS.reduce((a,k)=>a+DB.report(k).total,0)
+  const totalQ=SUBJ_KEYS.reduce((a,k)=>a+reps[k].total,0)
   if(totalQ>0){
     const sz=120,r=50,cx=sz/2,cy=sz/2,circ=2*Math.PI*r
     let so=0;const svg=[`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="margin:0 auto 10px;display:block">`]
-    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(!rep.total)return;const frac=rep.ok/rep.total,seg=frac*circ;svg.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SUBJECTS[k].color}" stroke-width="18" stroke-dasharray="${seg} ${circ-seg}" stroke-dashoffset="${-so}" transform="rotate(-90 ${cx} ${cy})"/>`);so+=seg})
+    SUBJ_KEYS.forEach(k=>{const rep=reps[k];if(!rep.total)return;const frac=rep.ok/rep.total,seg=frac*circ;svg.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SUBJECTS[k].color}" stroke-width="18" stroke-dasharray="${seg} ${circ-seg}" stroke-dashoffset="${-so}" transform="rotate(-90 ${cx} ${cy})"/>`);so+=seg})
     svg.push(`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="22" font-weight="700">${totalQ}</text><text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="8">سؤال</text></svg>`)
     pc.innerHTML=svg.join('')+'<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">'
-    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(!rep.total)return;pc.innerHTML+=`<span style="font-size:8px;color:${SUBJECTS[k].color}">${SUBJECTS[k].icon} ${rep.ok}/${rep.total}</span> `})
-    // 🔥 توصية
+    SUBJ_KEYS.forEach(k=>{const rep=reps[k];if(!rep.total)return;pc.innerHTML+=`<span style="font-size:8px;color:${SUBJECTS[k].color}">${SUBJECTS[k].icon} ${rep.ok}/${rep.total}</span> `})
     let worst=null,worstPct=100
-    SUBJ_KEYS.forEach(k=>{const rep=DB.report(k);if(rep.total>0&&rep.pct<worstPct){worstPct=rep.pct;worst=k}})
+    SUBJ_KEYS.forEach(k=>{const rep=reps[k];if(rep.total>0&&rep.pct<worstPct){worstPct=rep.pct;worst=k}})
     if(worst)pc.innerHTML+=`</div><div style="margin-top:8px;padding:8px;background:rgba(250,204,21,0.06);border-radius:8px;font-size:9px;color:#facc15">💡 يحتاج مراجعة: ${SUBJECTS[worst].name} (${worstPct}%)</div>`
   }else{
     const _noData=document.createElement('span');_noData.style.cssText='color:rgba(255,255,255,.15);font-size:10px';_noData.textContent='لا توجد بيانات بعد';pc.appendChild(_noData)
@@ -846,7 +846,15 @@ function updateSB(){
 function updateStreak(){
   const today=new Date().toDateString()
   let last=S('h8_streakLast')||'',count=+S('h8_streak')||0
-  if(last!==today){const yest=new Date(Date.now()-864e5).toDateString();if(last===yest)count++;else count=1;SS('h8_streak',count);SS('h8_streakLast',today)}
+  if(last!==today){
+    const yest=new Date(Date.now()-864e5).toDateString()
+    // Use UTC to avoid DST boundary issues
+    const utcToday=new Date().toISOString().slice(0,10)
+    const utcYest=new Date(Date.now()-864e5).toISOString().slice(0,10)
+    if(last.slice(0,10)===utcYest||last===yest)count++
+    else if(last.slice(0,10)!==utcToday)count=1
+    SS('h8_streak',count);SS('h8_streakLast',today)
+  }
   $('streakNum').textContent=count
 }
 
@@ -860,7 +868,7 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){SR.stop();T.noAuto=1;MB()}else{SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
+    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){T.userStopped=1;SR.stop();T.noAuto=1;MB()}else{T.userStopped=0;SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
     el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
     el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');const s=$('studentSpeech');if(s)s.textContent='🗣️ '+t;if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
     el('menuBtn','click',openSB)

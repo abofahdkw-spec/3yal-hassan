@@ -646,7 +646,7 @@ const AUD={
   },
   spk(t,cb){
     if(!t){if(cb)cb();return}
-    if(!this.syn||!this.ok){const s=$('studentSpeech');if(s)s.textContent='💬 '+t;if(cb)cb();return}
+    if(!this.syn||!this.ok){WORDS('💬 '+t);if(cb)cb();return}
     const p=t.match(/[^.!?]+[.!?]+/g)||[t]
     p.forEach((x,i)=>{this.q.push({t:x.trim(),cb:i===p.length-1?cb:null})})
     if(!this.b)this._nx()
@@ -663,9 +663,9 @@ const AUD={
       this.b=0;this.q.unshift(i)
       setTimeout(()=>this._nx(),200)
     },3000)
-    u.onstart=()=>{clearTimeout(wd);T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active')}
-    u.onend=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
-    u.onerror=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
+    u.onstart=()=>{clearTimeout(wd);T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active');_voiceCheck()}
+    u.onend=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;_voiceCheck();if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
+    u.onerror=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;_voiceCheck();if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
     try{this.syn.speak(u)}catch(e){clearTimeout(wd);this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
   },
   _autoListen(){
@@ -695,17 +695,17 @@ const AUD={
 
 // ═══ الاستماع ═══
 const SR={
-  r:null,ok:0,timer:null,silenceTimer:null,silenceDelay:8000,
+  r:null,ok:0,timer:null,silenceTimer:null,silenceDelay:8000,sid:0,
   init(){
     const C=window.SpeechRecognition||window.webkitSpeechRecognition
     if(!C){const w=$('micWrap');if(w)w.classList.add('typing');return}
     this.ok=1;this.r=new C();this.r.lang='ar-SA';this.r.continuous=1;this.r.interimResults=1;this.r.maxAlternatives=3
-    this.r.onresult=e=>{clearTimeout(this.timer);clearTimeout(this.silenceTimer);let f='',n='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)f+=t;else n+=t}const d=f||n;if(d.trim())$('studentSpeech').textContent=d;this.timer=setTimeout(()=>{if(f.trim())this._proc(NORM(f.trim()))},400);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}
+    this.r.onresult=e=>{clearTimeout(this.timer);clearTimeout(this.silenceTimer);const mySid=this.sid;let f='',n='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)f+=t;else n+=t}const d=f||n;if(d.trim())_showUser(d);this.timer=setTimeout(()=>{if(f.trim()&&this.sid===mySid)this._proc(NORM(f.trim()))},400);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}
     this.r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;this.stop();MB()}
     this.r.onend=()=>{if(T.li&&!T._srStop){try{this.r.start()}catch(e){}}else{MB();T._srStop=0}}
   },
-  start(){if(!this.ok||!this.r)return;T._srStop=0;T.userStopped=0;try{this.r.start();T.li=1;ORB.setState('listening');$('statusBar').textContent='أستمع...';$('statusBar').classList.add('active');$('micBtn').classList.add('active');ORB.startMic();clearTimeout(this.silenceTimer);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}catch(e){}},
-  stop(){if(!this.r)return;T._srStop=1;try{this.r.stop()}catch(e){}T.li=0;$('micBtn').classList.remove('active');ORB.stopMic();clearTimeout(this.silenceTimer);if(!T.sp){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}},
+  start(){if(!this.ok||!this.r)return;this.sid++;T._srStop=0;T.userStopped=0;clearTimeout(this.timer);try{this.r.start();T.li=1;ORB.setState('listening');$('statusBar').textContent='أستمع...';$('statusBar').classList.add('active');$('micBtn').classList.add('active');ORB.startMic();_voiceCheck();clearTimeout(this.silenceTimer);this.silenceTimer=setTimeout(()=>this._silence(),this.silenceDelay)}catch(e){}},
+  stop(){if(!this.r)return;this.sid++;T._srStop=1;try{this.r.stop()}catch(e){}T.li=0;$('micBtn').classList.remove('active');ORB.stopMic();clearTimeout(this.timer);clearTimeout(this.silenceTimer);_voiceCheck();if(!T.sp){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}},
   _proc(t){this.stop();if(!SAFE(t)){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return};TEACH.input(t)},
   _silence(){
     this.stop()
@@ -714,6 +714,8 @@ const SR={
   }
 }
 function MB(){const b=$('micBtn'),ic=$('micIcon');if(b)b.classList.toggle('active',T.li);if(ic)ic.textContent=T.li?'⏹':'🎤'}
+function _voiceCheck(){const vm=$('voiceMode');if(!vm)return;const typing=$('micWrap')?.classList.contains('typing');vm.classList.toggle('open',!typing&&!!(T.sp||T.li))}
+function _showUser(t){const s=$('studentSpeech'),r=$('userMsgRow');if(s)s.textContent=t;if(r){r.style.display='flex';const chat=$('chatArea');if(chat)chat.scrollTop=chat.scrollHeight}}
 
 // ═══ عرض الكلمات ═══
 let _wid=0,_wt
@@ -723,11 +725,11 @@ function SW(text){
 function WORDS(text){
   const id=++_wid;const words=text.split(/(\s+)/).filter(w=>w.trim().length>0)
   clearTimeout(_wt);const line=$('speechText');if(!line)return;line.innerHTML=''
-  if(!words.length){const sp=document.createElement('span');sp.style.cssText='color:rgba(255,255,255,.08);font-size:13px';sp.textContent=text;line.appendChild(sp);return}
+  if(!words.length){const sp=document.createElement('span');sp.style.cssText='color:rgba(255,255,255,.08);font-size:13px';sp.textContent=text;line.appendChild(sp);const chat=$('chatArea');if(chat)chat.scrollTop=chat.scrollHeight;return}
   words.forEach(w=>{if(/^\s+$/.test(w))return;const sp=document.createElement('span');sp.className='word';sp.textContent=w;line.appendChild(sp)})
   const spans=line.querySelectorAll('.word'),total=spans.length
   let idx=0;const int=Math.max(60,Math.min(180,Math.floor(70*120/(total||1))))
-  function rev(){if(idx>=total||id!==_wid)return;spans[idx].classList.add('visible');idx++;if(idx<total)_wt=setTimeout(rev,int)}
+  function rev(){if(idx>=total||id!==_wid)return;spans[idx].classList.add('visible');idx++;if(idx<total)_wt=setTimeout(rev,int);else{const chat=$('chatArea');if(chat)chat.scrollTop=chat.scrollHeight}}
   setTimeout(rev,80)
 }
 
@@ -992,9 +994,13 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if(w)w.classList.remove('typing');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}AUD.clr();if(T.li){T.userStopped=1;SR.stop();T.noAuto=1;MB()}else{T.userStopped=0;SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
+    el('micBtn','click',()=>{const w=$('micWrap');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}if(w)w.classList.remove('typing');AUD.clr();if(T.li){T.userStopped=1;SR.stop();T.noAuto=1;MB()}else{T.userStopped=0;SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
     el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
-    el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';const w=$('micWrap');if(w)w.classList.remove('typing');const s=$('studentSpeech');if(s)s.textContent='🗣️ '+t;if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
+    el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';_showUser('🗣️ '+t);if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
+    el('sendBtn','click',()=>{const i=$('txtInput');if(i)i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))})
+    el('voiceCloseBtn','click',()=>{T.userStopped=1;SR.stop();AUD.clr();_voiceCheck()})
+    el('endCallBtn','click',()=>{T.userStopped=1;SR.stop();AUD.clr();_voiceCheck()})
+    el('muteBtn','click',()=>{if(AUD.b||AUD.q.length){AUD.clr();$('statusBar').textContent='🔇 مكتوم';$('muteBtn').innerHTML='<i class="material-icons">mic</i>'}else{AUD.spk('الصوت شغال');$('muteBtn').innerHTML='<i class="material-icons">mic_off</i>'}})
     el('menuBtn','click',openSB)
     el('closeSb','click',closeSB)
     el('sbOverlay','click',closeSB)

@@ -630,13 +630,15 @@ const AMB={osc:null,gain:null,on:0,
 // ═══ الصوت ═══
 const AUD={
   syn:window.speechSynthesis,v:null,q:[],b:0,gen:'male',ok:1,
+  fails:0,
   init(){
     if(!this.syn){this.ok=0;const s=$('statusBar');if(s)s.textContent='⚠️ المتصفح لا يدعم الصوت';return}
-    const p=()=>{const v=this.syn.getVoices();if(v.length)this._pk();else setTimeout(p,150)}
-    if(this.syn.getVoices().length)this._pk()
-    else{this.syn.addEventListener('voiceschanged',()=>this._pk(),{once:1});setTimeout(p,200)}
-    // Warm up speech engine (skip iOS — cancel breaks speech)
-    try{const w=new SpeechSynthesisUtterance(' ');w.volume=0;this.syn.speak(w);if(!_isIOS)this.syn.cancel()}catch(e){}
+    const l=()=>{const v=this.syn.getVoices();if(v.length)this._pk();else setTimeout(l,150)}
+    if(this.syn.getVoices().length)l()
+    else{this.syn.addEventListener('voiceschanged',()=>l(),{once:1});setTimeout(l,300)}
+    // Warmup only on non-mobile (mobile speech engines don't need it & it can lock old Android)
+    const mob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if(!mob)try{const w=new SpeechSynthesisUtterance(' ');w.volume=0;this.syn.speak(w);setTimeout(()=>{try{this.syn.cancel()}catch(e){}},150)}catch(e){}
   },
   _pk(){
     if(!this.syn)return;const v=this.syn.getVoices();if(!v.length)return
@@ -647,6 +649,8 @@ const AUD={
   spk(t,cb){
     if(!t){if(cb)cb();return}
     if(!this.syn||!this.ok){WORDS('💬 '+t);if(cb)cb();return}
+    // Too many failures — engine broken, text fallback only
+    if(this.fails>=3){WORDS('🔊 '+t);if(cb)cb();return}
     const p=t.match(/[^.!?]+[.!?]+/g)||[t]
     p.forEach((x,i)=>{this.q.push({t:x.trim(),cb:i===p.length-1?cb:null})})
     if(!this.b)this._nx()
@@ -655,26 +659,47 @@ const AUD={
     if(this.b||!this.q.length)return
     this.b=1;const i=this.q.shift(),u=new SpeechSynthesisUtterance(i.t)
     u.lang='ar-SA';u.rate=.92;u.pitch=.98;u.volume=1;if(this.v)u.voice=this.v
-    // Android fix: clear stuck state before speaking (skip iOS — breaks engine)
-    if(!_isIOS)try{this.syn.cancel()}catch(e){}
+    let timedOut=false
+    const MAX_WAIT=5000
     let wd=setTimeout(()=>{
-      // onstart didn't fire — utterance stuck, cancel & retry
-      if(!_isIOS)try{this.syn.cancel()}catch(e){}
-      this.b=0;this.q.unshift(i)
-      setTimeout(()=>this._nx(),200)
-    },3000)
-    u.onstart=()=>{clearTimeout(wd);T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active');_voiceCheck()}
-    u.onend=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;_voiceCheck();if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)}
-    u.onerror=()=>{clearTimeout(wd);if(i._done)return;i._done=1;this.b=0;T.sp=0;_voiceCheck();if(i.cb)i.cb();setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},80)}
-    try{this.syn.speak(u)}catch(e){clearTimeout(wd);this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),80)}
+      timedOut=true
+      this.fails++
+      this.b=0
+      this.q.unshift(i)
+      // Check if we've failed too many times
+      if(this.fails>=3){return}
+      setTimeout(()=>this._nx(),300)
+    },MAX_WAIT)
+    u.onstart=()=>{
+      clearTimeout(wd)
+      this.fails=0 // success — reset failure counter
+      T.sp=1;ORB.setState('speaking');$('statusBar').textContent='أبو فهد يتحدث...';$('statusBar').classList.add('active');_voiceCheck()
+    }
+    const done=()=>{
+      clearTimeout(wd)
+      if(timedOut)return
+      if(i._done)return;i._done=1
+      this.b=0;T.sp=0;_voiceCheck()
+      if(!T.li){ORB.setState('idle');$('statusBar').textContent='بانتظارك';$('statusBar').classList.remove('active')}
+      if(i.cb)i.cb()
+      setTimeout(()=>{this._nx();if(!this.q.length&&!this.b)this._autoListen()},150)
+    }
+    u.onend=done
+    u.onerror=()=>{
+      if(timedOut)return
+      this.fails++
+      done()
+    }
+    try{this.syn.speak(u)}catch(e){clearTimeout(wd);this.fails++;this.b=0;if(i.cb)i.cb();setTimeout(()=>this._nx(),200)}
   },
   _autoListen(){
-    if(T.li||T.sp||T.silencePrompt||T.userStopped)return
+    if(T.li||T.sp||T.silencePrompt||T.userStopped||this.fails>=3)return
     if(T.phase==='init')return
     clearTimeout(this._altimer)
     this._altimer=setTimeout(()=>{SR.start();MB()},200)
   },
-  clr(){if(this.syn)try{this.syn.cancel()}catch(e){}this.q=[];this.b=0;T.sp=0},
+  clr(){if(this.syn)try{if(this.b)this.syn.cancel()}catch(e){}this.q=[];this.b=0;T.sp=0},
+  _act:null,
   _act:null,
   sfx(tp){
     try{

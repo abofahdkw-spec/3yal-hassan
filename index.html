@@ -635,8 +635,8 @@ const AUD={
     const p=()=>{const v=this.syn.getVoices();if(v.length)this._pk();else setTimeout(p,150)}
     if(this.syn.getVoices().length)this._pk()
     else{this.syn.addEventListener('voiceschanged',()=>this._pk(),{once:1});setTimeout(p,200)}
-    // Warm up speech engine (helps Android Chrome)
-    try{const w=new SpeechSynthesisUtterance(' ');w.volume=0;this.syn.speak(w);this.syn.cancel()}catch(e){}
+    // Warm up speech engine (skip iOS — cancel breaks speech)
+    try{const w=new SpeechSynthesisUtterance(' ');w.volume=0;this.syn.speak(w);if(!_isIOS)this.syn.cancel()}catch(e){}
   },
   _pk(){
     if(!this.syn)return;const v=this.syn.getVoices();if(!v.length)return
@@ -655,11 +655,11 @@ const AUD={
     if(this.b||!this.q.length)return
     this.b=1;const i=this.q.shift(),u=new SpeechSynthesisUtterance(i.t)
     u.lang='ar-SA';u.rate=.92;u.pitch=.98;u.volume=1;if(this.v)u.voice=this.v
-    // Android fix: clear stuck state before speaking
-    try{this.syn.cancel()}catch(e){}
+    // Android fix: clear stuck state before speaking (skip iOS — breaks engine)
+    if(!_isIOS)try{this.syn.cancel()}catch(e){}
     let wd=setTimeout(()=>{
-      // onstart didn't fire — utterance stuck (Android bug), cancel & retry
-      try{this.syn.cancel()}catch(e){}
+      // onstart didn't fire — utterance stuck, cancel & retry
+      if(!_isIOS)try{this.syn.cancel()}catch(e){}
       this.b=0;this.q.unshift(i)
       setTimeout(()=>this._nx(),200)
     },3000)
@@ -722,6 +722,7 @@ let _wid=0,_wt
 function SW(text){
   $('studentSpeech').textContent='';WORDS(text)
 }
+const _isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)
 function WORDS(text){
   const id=++_wid;const words=text.split(/(\s+)/).filter(w=>w.trim().length>0)
   clearTimeout(_wt);const line=$('speechText');if(!line)return;line.innerHTML=''
@@ -994,8 +995,8 @@ function init(){
   try{CF.init()}catch(e){console.warn('CF.init failed:',e)}
   try{
     const el=(id,evt,fn)=>{const e=$(id);if(e)e.addEventListener(evt,fn)}
-    el('micBtn','click',()=>{const w=$('micWrap');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300);return}if(w)w.classList.remove('typing');AUD.clr();if(T.li){T.userStopped=1;SR.stop();T.noAuto=1;MB()}else{T.userStopped=0;SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
-    el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},300)}})
+    el('micBtn','click',()=>{const w=$('micWrap');if((!SR.ok||!AUD.ok)&&w){w.classList.add('typing');setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},0);return}if(w)w.classList.remove('typing');AUD.clr();if(T.li){T.userStopped=1;SR.stop();T.noAuto=1;MB()}else{T.userStopped=0;SR.start();T.noAuto=0;MB();if(T.phase==='askName'){AUD.spk('يا هلا. وش اسمك؟')}else if(T.phase==='ready'&&T.childName){AUD.spk(`أبو فهد معك يا ${T.childName}. اختر مادة: ${SUBJ_KEYS.map(s=>SUBJECTS[s].name).join('، ')}`)}}})
+    el('micLabel','click',()=>{const w=$('micWrap');if(!w)return;w.classList.toggle('typing');if(w.classList.contains('typing')){AUD.clr();SR.stop();MB();setTimeout(()=>{const i=$('txtInput');if(i)i.focus()},0)}})
     el('txtInput','keydown',e=>{if(e.key!=='Enter')return;const i=$('txtInput');if(!i)return;const t=i.value.trim();if(!t)return;i.value='';_showUser('🗣️ '+t);if(!SAFE(NORM(t))){const m=`أنا هنا لتعليمك يا ${T.childName||'بطل'}، دعنا نركز على دروسنا`;AUD.spk(m);SW('⚠️ '+m);return}TEACH.input(NORM(t))})
     el('sendBtn','click',()=>{const i=$('txtInput');if(i)i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))})
     el('voiceCloseBtn','click',()=>{T.userStopped=1;SR.stop();AUD.clr();_voiceCheck()})
